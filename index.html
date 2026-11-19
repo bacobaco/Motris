@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=6" />
+  <link rel="stylesheet" href="style.css?v=8" />
 </head>
 
 <body>
@@ -57,6 +57,7 @@
         <span class="target-tile">S</span>
       </div>
       <span class="target-hint">EXPLOSE + VOISINS !</span>
+      <span class="mobile-next-chip">SUIV. <strong id="mobileNextLetter">?</strong></span>
     </section>
 
     <!-- Main Game Area -->
@@ -88,34 +89,24 @@
           <div class="overlay active" id="startOverlay">
             <div class="overlay-card">
               <h1 class="hero-title">MOTRIS</h1>
-              <p class="hero-sub">Place les lettres une par une pour former le <strong>Mot à créer</strong> : il explose
-                avec toutes les cases autour ! Les autres mots français rapportent aussi des points bonus.</p>
+              <p class="hero-sub">Forme le <strong>Mot à créer</strong> pour tout faire exploser !</p>
 
               <div class="mode-selector">
                 <button class="mode-btn selected" data-mode="classic">
                   <span class="mode-icon">⚡</span>
                   <span class="mode-name">Classique</span>
-                  <span class="mode-desc">Vitesse progressive</span>
                 </button>
                 <button class="mode-btn" data-mode="blitz">
                   <span class="mode-icon">⏱️</span>
                   <span class="mode-name">Blitz 3m</span>
-                  <span class="mode-desc">Score max en 3 min</span>
                 </button>
                 <button class="mode-btn" data-mode="zen">
                   <span class="mode-icon">🧘</span>
                   <span class="mode-name">Zen</span>
-                  <span class="mode-desc">Sans gravité auto</span>
                 </button>
               </div>
 
               <button class="primary-btn" id="playBtn">JOUER</button>
-
-              <div class="legend-row">
-                <span class="legend-chip vowel">Voyelle</span>
-                <span class="legend-chip consonant">Consonne</span>
-                <span class="legend-chip rare">Rare</span>
-              </div>
             </div>
           </div>
 
@@ -207,7 +198,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=7"></script>
+  <script type="module" src="js/main.js?v=8"></script>
 </body>
 
 </html>

@@ -1,10 +1,10 @@
 import { LetterBag } from './pieces.js?v=6';
 import { findMatches, pickTargetWord, previewGhostWords } from './words.js?v=7';
-import { Renderer } from './renderer.js?v=7';
+import { Renderer } from './renderer.js?v=8';
 import { sound } from './audio.js?v=6';
 
 const COLS = 10;
-const ROWS = 18;
+const ROWS = 15;
 const CLEAR_DURATION = 420; // ms d'animation avant explosion
 const FEVER_DURATION = 14000; // 14s de Mode Fièvre
 
@@ -14,6 +14,7 @@ const nextCanvas = document.getElementById('nextCanvas');
 const boardFrame = document.getElementById('boardFrame');
 const targetBanner = document.getElementById('targetBanner');
 const targetWordDisplay = document.getElementById('targetWordDisplay');
+const mobileNextLetter = document.getElementById('mobileNextLetter');
 
 const scoreVal = document.getElementById('scoreVal');
 const bestVal = document.getElementById('bestVal');
@@ -134,6 +135,9 @@ function spawnNextPiece() {
   state.dropTimer = 0;
 
   renderer.renderMiniPiece(nextCanvas, state.nextPiece, state.feverActive);
+  if (mobileNextLetter && state.nextPiece?.blocks?.[0]) {
+    mobileNextLetter.textContent = state.nextPiece.blocks[0].letter;
+  }
 
   if (!isValidPosition(state.activePiece)) {
     triggerGameOver('GRILLE PLEINE');

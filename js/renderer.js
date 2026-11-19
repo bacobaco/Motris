@@ -182,18 +182,18 @@ export class Renderer {
     ctx.strokeStyle = clearingProgress > 0 ? '#ffffff' : (highlight ? '#00ff88' : pal.border);
     ctx.stroke();
 
-    // Lettre principale
+    // Lettre principale (grande et très lisible sur mobile et PC)
     ctx.fillStyle = pal.text;
-    ctx.font = `800 ${Math.floor(rh * 0.56)}px Outfit, sans-serif`;
+    ctx.font = `900 ${Math.floor(rh * 0.65)}px Outfit, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText(letter, x + w / 2, y + h / 2 + 1);
 
-    // Petit badge de points (style Scrabble)
+    // Petit badge de points uniquement sur les grandes tuiles (PC) pour ne pas encombrer le mobile
     const pts = LETTER_POINTS[letter];
-    if (pts && letter !== '★' && letter !== '💣' && rw >= 22) {
+    if (pts && letter !== '★' && letter !== '💣' && rw >= 36) {
       ctx.fillStyle = cat === 'vowel' ? 'rgba(28, 25, 23, 0.65)' : 'rgba(255, 255, 255, 0.78)';
-      ctx.font = `700 ${Math.max(7, Math.floor(rh * 0.22))}px Outfit, sans-serif`;
+      ctx.font = `700 ${Math.max(8, Math.floor(rh * 0.21))}px Outfit, sans-serif`;
       ctx.textAlign = 'right';
       ctx.textBaseline = 'bottom';
       ctx.fillText(String(pts), rx + rw - 3, ry + rh - 2);
