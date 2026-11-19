@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="fr">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MOTRIS — Tetris de Mots Français</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css?v=6" />
+</head>
+
+<body>
+  <div class="bg-orb orb-1"></div>
+  <div class="bg-orb orb-2"></div>
+  <div class="bg-orb orb-3"></div>
+
+  <div class="app-shell">
+    <!-- Top Header -->
+    <header class="top-bar">
+      <div class="brand">
+        <span class="brand-logo">MOTRIS</span>
+        <span class="brand-badge" id="modeBadge">CLASSIQUE</span>
+      </div>
+
+      <div class="hud-pills">
+        <div class="hud-pill">
+          <span class="hud-label">SCORE</span>
+          <span class="hud-value" id="scoreVal">0</span>
+        </div>
+        <div class="hud-pill">
+          <span class="hud-label">RECORD</span>
+          <span class="hud-value accent" id="bestVal">0</span>
+        </div>
+        <div class="hud-pill" id="levelPill">
+          <span class="hud-label" id="levelLabel">NIV.</span>
+          <span class="hud-value" id="levelVal">1</span>
+        </div>
+      </div>
+
+      <div class="header-actions">
+        <button class="icon-btn" id="soundBtn" title="Son" aria-label="Activer ou couper le son">🔊</button>
+        <button class="icon-btn" id="pauseBtn" title="Pause" aria-label="Pause">⏸️</button>
+        <button class="icon-btn" id="helpBtn" title="Règles" aria-label="Règles du jeu">❓</button>
+      </div>
+    </header>
+
+    <!-- Target Word Banner (Always visible, Desktop & Mobile) -->
+    <section class="target-banner" id="targetBanner">
+      <span class="target-label">🎯 MOT À CRÉER</span>
+      <div class="target-letters" id="targetWordDisplay">
+        <span class="target-tile">M</span>
+        <span class="target-tile">O</span>
+        <span class="target-tile">T</span>
+        <span class="target-tile">S</span>
+      </div>
+      <span class="target-hint">EXPLOSE + VOISINS !</span>
+    </section>
+
+    <!-- Main Game Area -->
+    <main class="game-layout">
+      <!-- Left Panel (Desktop) / Compact Bar (Mobile) -->
+      <aside class="side-panel left-panel">
+        <div class="glass-card mini-card">
+          <div class="card-title">LETTRE SUIVANTE</div>
+          <canvas id="nextCanvas" width="96" height="68"></canvas>
+        </div>
+
+        <div class="glass-card fever-card">
+          <div class="card-title">
+            <span>FIÈVRE</span>
+            <span id="feverStatus" class="fever-tag">0%</span>
+          </div>
+          <div class="fever-track">
+            <div class="fever-fill" id="feverFill"></div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- Center Board -->
+      <section class="board-container">
+        <div class="board-frame" id="boardFrame">
+          <canvas id="gameCanvas"></canvas>
+
+          <!-- Start Overlay -->
+          <div class="overlay active" id="startOverlay">
+            <div class="overlay-card">
+              <h1 class="hero-title">MOTRIS</h1>
+              <p class="hero-sub">Place les lettres une par une pour former le <strong>Mot à créer</strong> : il explose
+                avec toutes les cases autour ! Les autres mots français rapportent aussi des points bonus.</p>
+
+              <div class="mode-selector">
+                <button class="mode-btn selected" data-mode="classic">
+                  <span class="mode-icon">⚡</span>
+                  <span class="mode-name">Classique</span>
+                  <span class="mode-desc">Vitesse progressive</span>
+                </button>
+                <button class="mode-btn" data-mode="blitz">
+                  <span class="mode-icon">⏱️</span>
+                  <span class="mode-name">Blitz 3m</span>
+                  <span class="mode-desc">Score max en 3 min</span>
+                </button>
+                <button class="mode-btn" data-mode="zen">
+                  <span class="mode-icon">🧘</span>
+                  <span class="mode-name">Zen</span>
+                  <span class="mode-desc">Sans gravité auto</span>
+                </button>
+              </div>
+
+              <button class="primary-btn" id="playBtn">JOUER</button>
+
+              <div class="legend-row">
+                <span class="legend-chip vowel">Voyelle</span>
+                <span class="legend-chip consonant">Consonne</span>
+                <span class="legend-chip rare">Rare</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pause Overlay -->
+          <div class="overlay" id="pauseOverlay">
+            <div class="overlay-card compact">
+              <h2>PAUSE</h2>
+              <button class="primary-btn" id="resumeBtn">REPRENDRE</button>
+              <button class="secondary-btn" id="restartFromPauseBtn">RECOMMENCER</button>
+            </div>
+          </div>
+
+          <!-- Game Over Overlay -->
+          <div class="overlay" id="gameOverOverlay">
+            <div class="overlay-card compact">
+              <h2 id="gameOverTitle">PARTIE TERMINÉE</h2>
+              <div class="stats-grid">
+                <div class="stat-box">
+                  <span class="stat-label">Score</span>
+                  <span class="stat-num" id="finalScore">0</span>
+                </div>
+                <div class="stat-box">
+                  <span class="stat-label">Mots cibles</span>
+                  <span class="stat-num" id="finalTargets">0</span>
+                </div>
+                <div class="stat-box full">
+                  <span class="stat-label">Mots trouvés</span>
+                  <span class="stat-num accent" id="finalWords">0</span>
+                </div>
+              </div>
+              <button class="primary-btn" id="retryBtn">REJOUER</button>
+              <button class="secondary-btn" id="menuBtn">MENU</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- Right Panel (Desktop only) -->
+      <aside class="side-panel right-panel">
+        <div class="glass-card words-card">
+          <div class="card-title">MOTS VALIDÉS</div>
+          <ul class="word-feed" id="wordFeed">
+            <li class="word-empty">Forme le mot cible…</li>
+          </ul>
+        </div>
+
+        <div class="glass-card controls-card">
+          <div class="card-title">COMMANDES PC</div>
+          <div class="shortcut-list">
+            <div><kbd>←</kbd> <kbd>→</kbd> Déplacer</div>
+            <div><kbd>↓</kbd> Descendre</div>
+            <div><kbd>Espace</kbd> Chute directe</div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Touch Controls (Mobile / Tablet) -->
+    <nav class="touch-controls" aria-label="Contrôles tactiles">
+      <div class="touch-row">
+        <button class="touch-btn" data-action="left" aria-label="Gauche">◀</button>
+        <button class="touch-btn" data-action="down" aria-label="Descendre">▼</button>
+        <button class="touch-btn" data-action="right" aria-label="Droite">▶</button>
+        <button class="touch-btn drop-btn" data-action="drop" aria-label="Chute directe">⤓ CHUTE</button>
+      </div>
+    </nav>
+  </div>
+
+  <!-- Help Modal -->
+  <div class="modal-backdrop" id="helpModal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <h3>Comment jouer à MOTRIS</h3>
+        <button class="icon-btn" id="closeHelpBtn">✕</button>
+      </div>
+      <div class="modal-body">
+        <ul>
+          <li><strong>Une lettre à la fois</strong> : Déplace la lettre avec <kbd>←</kbd> <kbd>→</kbd>, descends avec
+            <kbd>↓</kbd> ou lâche-la d'un coup avec <kbd>Espace</kbd>.
+          </li>
+          <li><strong>🎯 Mot à créer</strong> : Forme le mot affiché en haut (horizontalement ou verticalement) pour
+            déclencher une <strong>méga explosion</strong> qui détruit aussi toutes les cases adjacentes et rapporte un
+            énorme bonus !</li>
+          <li><strong>Mots bonus</strong> : Si un autre mot français (3+ lettres) se forme, il disparaît aussi et
+            rapporte des points bonus (mais moins que le mot cible).</li>
+          <li><strong>Cascades & Fièvre</strong> : Enchaîne les mots pour activer la Fièvre Fluo (×3 points).</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js?v=7"></script>
+</body>
+
+</html>

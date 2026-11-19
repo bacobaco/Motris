@@ -1,0 +1,43 @@
+// Liste curatée de mots français 100 % valides, courants et plaisants à former (4 à 7 lettres, sans accents)
+export const TARGET_WORDS = {
+  4: [
+    'LUNE', 'CHAT', 'CAFE', 'VENT', 'PAIN', 'ROSE', 'LION', 'LOUP', 'OURS', 'CERF',
+    'BOIS', 'NUIT', 'JOUR', 'SOIR', 'MIDI', 'PORT', 'PONT', 'TOUR', 'TOIT', 'CAVE',
+    'PARC', 'AUTO', 'MOTO', 'VELO', 'ROUE', 'MAIN', 'PIED', 'YEUX', 'TETE', 'BRAS',
+    'DENT', 'PEAU', 'ROBE', 'JUPE', 'PULL', 'GANT', 'DRAP', 'LAIT', 'MIEL', 'NOIX',
+    'POIS', 'CHOU', 'MAIS', 'AURA', 'ECHO', 'ONDE', 'FLUX', 'NEON', 'JADE', 'BEAU',
+    'DOUX', 'FORT', 'HAUT', 'LONG', 'VRAI', 'RIRE', 'LIRE', 'VOIR', 'DIRE', 'JEUX',
+    'ROCK', 'JAZZ', 'NOTE', 'CUBE', 'ZONE', 'BASE', 'CODE', 'LIEN', 'PAGE', 'MODE',
+    'PLAN', 'IDEE', 'LAVE', 'CIEL', 'EAUX', 'FEUX', 'MURS', 'RUES', 'BLEU', 'VERT',
+    'NOIR', 'GRIS', 'DORE', 'ANGE', 'REVE', 'PAIX', 'JOIE', 'STAR', 'FILM', 'GARE'
+  ],
+  5: [
+    'PLAGE', 'ORAGE', 'NUAGE', 'FLEUR', 'ARBRE', 'FORET', 'TERRE', 'MONDE', 'OCEAN', 'VAGUE',
+    'SABLE', 'ROCHE', 'GLACE', 'NEIGE', 'PLUIE', 'BRUME', 'RAYON', 'ASTRE', 'FUSEE', 'TIGRE',
+    'AIGLE', 'CYGNE', 'LAPIN', 'CHIEN', 'POULE', 'VACHE', 'SINGE', 'ZEBRE', 'PANDA', 'PIANO',
+    'DANSE', 'CHANT', 'POEME', 'ROMAN', 'LIVRE', 'CONTE', 'MAGIE', 'REVES', 'ROBOT', 'LASER',
+    'PIXEL', 'VIDEO', 'AUDIO', 'RADIO', 'PHOTO', 'IMAGE', 'ECRAN', 'TRAIN', 'AVION', 'METRO',
+    'VOILE', 'ROUTE', 'PISTE', 'CARTE', 'PHARE', 'VILLE', 'TABLE', 'LAMPE', 'PORTE', 'SALON',
+    'TAPIS', 'CADRE', 'VERRE', 'TASSE', 'BOITE', 'POMME', 'POIRE', 'PECHE', 'MELON', 'SUCRE',
+    'CACAO', 'PIZZA', 'COEUR', 'FORCE', 'CALME', 'BRAVE', 'LIBRE', 'DOUCE', 'CLAIR', 'SUPER',
+    'ECOLE', 'ETOIL', 'HERBE', 'FEUIL', 'PERLE', 'BIJOU', 'ROUGE', 'JAUNE', 'BLANC', 'BRUIT'
+  ].filter(w => w.length === 5 && w !== 'ETOIL' && w !== 'FEUIL'),
+  6: [
+    'SOLEIL', 'MAISON', 'JARDIN', 'VOLCAN', 'DESERT', 'VALLEE', 'ETOILE', 'DRAGON', 'RENARD',
+    'CHEVAL', 'TORTUE', 'OISEAU', 'PIGEON', 'CANARD', 'MOUTON', 'VIOLON', 'CINEMA', 'MUSEES',
+    'DESSIN', 'OMBRES', 'VOYAGE', 'BATEAU', 'CAMION', 'COSMOS', 'ESPACE', 'GATEAU', 'ORANGE',
+    'BANANE', 'CERISE', 'FRAISE', 'RAISIN', 'TOMATE', 'SALADE', 'AMITIE', 'ESPOIR', 'AVENIR',
+    'SAVOIR', 'TALENT', 'SUCCES', 'PALAIS', 'TEMPLE', 'EGLISE', 'MARCHE', 'STUDIO', 'MANGUE',
+    'CITRON', 'POULET', 'CAHIER', 'CRAYON', 'BALLON', 'BONBON', 'CLOCHE', 'FLEUVE', 'SOURCE',
+    'NUAGES', 'ORAGES', 'PLAGES', 'FLEURS', 'ARBRES', 'FORETS', 'OCEANS', 'VAGUES', 'TIGRES',
+    'AIGLES', 'LAPINS', 'CHIENS', 'SINGES', 'ZEBRES', 'PANDAS', 'PIANOS', 'ROBOTS', 'LASERS'
+  ],
+  7: [
+    'LUMIERE', 'CHATEAU', 'RIVIERE', 'PLANETE', 'GALAXIE', 'BALEINE', 'DAUPHIN', 'GUITARE',
+    'THEATRE', 'PEINTRE', 'COULEUR', 'FROMAGE', 'CAROTTE', 'BONHEUR', 'SOURIRE', 'COURAGE',
+    'LIBERTE', 'MUSIQUE', 'CONCERT', 'PARADIS', 'MYSTERE', 'LEGENDE', 'SCIENCE', 'UNIVERS',
+    'METEORE', 'ECLIPSE', 'HORIZON', 'CASCADE', 'GLACIER', 'PRAIRIE', 'COLIBRI', 'VOLCANS',
+    'ETOILES', 'DRAGONS', 'RENARDS', 'CHEVAUX', 'OISEAUX', 'VOYAGES', 'BATEAUX', 'GATEAUX',
+    'ORANGES', 'BANANES', 'CERISES', 'FRAISES', 'TOMATES', 'SALADES', 'CHOCOLAT'.slice(0, 7)
+  ].filter(w => w.length === 7 && w !== 'CHOCOLA')
+};
