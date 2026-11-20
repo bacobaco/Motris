@@ -87,10 +87,10 @@ body {
   height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 960px;
+  max-width: 900px;
   margin: 0 auto;
-  padding: 10px 14px;
-  gap: 8px;
+  padding: 6px 10px;
+  gap: 6px;
 }
 
 /* Top Bar */
@@ -255,8 +255,8 @@ body {
   flex: 1;
   min-height: 0;
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 240px;
-  gap: 14px;
+  grid-template-columns: minmax(0, 1fr) 178px;
+  gap: 10px;
   align-items: stretch;
 }
 
@@ -264,7 +264,7 @@ body {
   display: flex;
   flex-direction: column;
   min-height: 0;
-  gap: 10px;
+  gap: 6px;
   align-items: center;
 }
 
@@ -406,8 +406,8 @@ body {
 }
 
 .tray-slot {
-  height: 92px;
-  border-radius: 16px;
+  height: 76px;
+  border-radius: 14px;
   background: var(--bg-panel);
   border: 1.5px solid var(--border-glass);
   backdrop-filter: blur(12px);
@@ -1143,39 +1143,71 @@ kbd {
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
 }
 
-/* Mobile & Tablet Responsive */
+/* Mobile & Tablet Responsive — espace MAX pour la grille 8×8 */
 @media (max-width: 820px) {
   .last-word-pill.show {
     display: inline-flex;
     align-items: center;
     gap: 4px;
   }
+
   .app-shell {
-    padding: 6px 8px;
-    gap: 6px;
+    padding: 4px 5px;
+    gap: 4px;
   }
 
-  .brand-logo {
-    font-size: 1.1rem;
-  }
-
-  .brand-badge {
+  .brand {
     display: none;
   }
 
+  .top-bar {
+    gap: 4px;
+  }
+
+  .hud-pills {
+    gap: 4px;
+    flex: 1;
+  }
+
   .hud-pill {
-    padding: 2px 7px;
-    min-width: 54px;
+    padding: 2px 6px;
+    min-width: 0;
+    flex: 1;
+    border-radius: 9px;
+  }
+
+  .hud-label {
+    font-size: 0.5rem;
   }
 
   .hud-value {
-    font-size: 0.9rem;
+    font-size: 0.86rem;
   }
 
   .icon-btn {
-    width: 32px;
-    height: 32px;
-    font-size: 0.85rem;
+    width: 30px;
+    height: 30px;
+    font-size: 0.82rem;
+    border-radius: 8px;
+  }
+
+  .tempo-wrap {
+    padding: 3px 8px;
+    gap: 6px;
+    border-radius: 10px;
+  }
+
+  .tempo-label {
+    font-size: 0.62rem;
+  }
+
+  .tempo-track {
+    height: 7px;
+  }
+
+  .tempo-time {
+    font-size: 0.74rem;
+    min-width: 24px;
   }
 
   .stage-layout {
@@ -1187,30 +1219,49 @@ kbd {
   }
 
   .play-column {
-    gap: 6px;
+    gap: 4px;
   }
 
   .board-frame {
-    padding: 4px;
-    border-radius: 16px;
-  }
-
-  .dock-area {
-    gap: 6px;
-  }
-
-  .action-pill {
-    padding: 8px 10px;
-    font-size: 0.8rem;
-  }
-
-  .tray-slot {
-    height: 74px;
+    padding: 3px;
     border-radius: 14px;
   }
 
-  .tray-slot canvas {
-    width: 88px;
+  #gameCanvas {
+    border-radius: 11px;
+  }
+
+  .dock-area {
+    gap: 4px;
+    max-width: 100%;
+  }
+
+  .action-bar {
+    gap: 5px;
+  }
+
+  .action-pill {
+    padding: 6px 9px;
+    font-size: 0.76rem;
+    border-radius: 10px;
+  }
+
+  .fever-inline {
+    padding: 5px 7px;
+    border-radius: 10px;
+  }
+
+  .tray-grid {
+    gap: 5px;
+  }
+
+  .tray-slot {
     height: 64px;
+    border-radius: 12px;
+  }
+
+  .tray-slot canvas {
+    width: 82px;
+    height: 58px;
   }
 }
