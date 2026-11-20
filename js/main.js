@@ -69,8 +69,8 @@ const state = {
   combo: 0,
   level: 1,
 
-  tempoMax: 22000,
-  tempoRemaining: 22000,
+  tempoMax: 60000,
+  tempoRemaining: 60000,
 
   fever: 0,
   feverActive: false,
@@ -160,7 +160,7 @@ function renderTray() {
 }
 
 function getTempoDuration() {
-  return Math.max(13000, 22000 - (state.level - 1) * 1000);
+  return Math.max(30000, 60000 - (state.level - 1) * 3000);
 }
 
 function resetTempo() {
