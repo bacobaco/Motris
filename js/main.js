@@ -7,7 +7,7 @@ import {
 import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=13';
 import { Renderer } from './renderer.js?v=9';
 import { sound } from './audio.js?v=9';
-import { fetchDefinition } from './definitions.js?v=15';
+import { fetchDefinition } from './definitions.js?v=16';
 
 const GRID_SIZE = 8;
 const CLEAR_DURATION = 380;

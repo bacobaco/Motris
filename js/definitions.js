@@ -1,4 +1,4 @@
-// Récupération en direct des définitions françaises via Wiktionnaire (CORS natif, sans serveur)
+// Récupération des vraies définitions françaises via Wiktionnaire (avec recherche insensible aux accents)
 
 const defCache = new Map();
 
@@ -12,9 +12,10 @@ function normalizeNoAccents(str) {
 function parseFrenchExtract(rawExtract, displayTitle) {
   if (!rawExtract) return null;
 
-  // Isoler la section "== Français =="
+  // Exiger explicitement la section "== Français ==" pour ne pas prendre un mot anglais/étranger
   const frMatch = rawExtract.match(/==\s*Français\s*==([\s\S]*?)(?=\n==\s*[^=]|$)/i);
-  const section = frMatch ? frMatch[1] : rawExtract;
+  if (!frMatch) return null;
+  const section = frMatch[1];
 
   // Découper par sous-sections "=== ... ==="
   const subRegex = /===\s*([^=]+?)\s*===/g;
@@ -24,7 +25,7 @@ function parseFrenchExtract(rawExtract, displayTitle) {
     parts.push({ title: match[1].trim(), index: match.index, end: subRegex.lastIndex });
   }
 
-  const skipTitles = /^(étymologie|prononciation|anagrammes|voir aussi|références|synonymes|antonymes|dérivés|traductions|notes|citations|homophones|paronymes)$/i;
+  const skipTitles = /^(étymologie|prononciation|anagrammes|voir aussi|références|synonymes|antonymes|dérivés|traductions|notes|citations|homophones|paronymes|vocabulaire|apparentés)/i;
 
   for (let i = 0; i < parts.length; i++) {
     const pos = parts[i].title;
@@ -39,17 +40,18 @@ function parseFrenchExtract(rawExtract, displayTitle) {
       .map(l => l.trim())
       .filter(l => l.length > 0 && !l.startsWith('===='));
 
-    // Sauter la ligne d'en-tête phonétique / genre (ex: "zoo \zo\ masculin")
+    // Filtrer la ligne d'en-tête phonétique / genre (ex: "énol \e.nɔl\ masculin")
     const defLines = lines.filter(l => {
-      if (l.includes('\\') && l.length < 90) return false;
-      if (/^(masculin|féminin|invariable|singulier|pluriel)\b/i.test(l) && l.length < 40) return false;
-      if (normalizeNoAccents(l.split(/\s+/)[0]) === normalizeNoAccents(displayTitle) && l.length < 60 && !l.includes('.')) return false;
+      if (l.includes('\\') && l.length < 110) return false;
+      if (/^(masculin|féminin|invariable|singulier|pluriel|transitif|intransitif)\b/i.test(l) && l.length < 45) return false;
+      const firstWord = l.split(/\s+/)[0].replace(/[.,;:!?]/g, '');
+      if (normalizeNoAccents(firstWord) === normalizeNoAccents(displayTitle) && l.length < 65 && !l.includes('.')) return false;
       return l.length > 8;
     });
 
     if (defLines.length > 0) {
       let text = defLines[0];
-      if (text.length > 180) text = text.slice(0, 177).trimEnd() + '…';
+      if (text.length > 210) text = text.slice(0, 207).trimEnd() + '…';
       return { title: displayTitle, pos, text };
     }
   }
@@ -58,7 +60,7 @@ function parseFrenchExtract(rawExtract, displayTitle) {
 }
 
 async function queryExtractByTitle(title) {
-  const url = `https://fr.wiktionary.org/w/api.php?action=query&prop=extracts&explaintext=1&exchars=1600&titles=${encodeURIComponent(title)}&format=json&origin=*`;
+  const url = `https://fr.wiktionary.org/w/api.php?action=query&prop=extracts&explaintext=1&exchars=3500&titles=${encodeURIComponent(title)}&format=json&origin=*`;
   const res = await fetch(url);
   if (!res.ok) return null;
   const data = await res.json();
@@ -69,19 +71,28 @@ async function queryExtractByTitle(title) {
   return { title: page.title, extract: page.extract };
 }
 
-async function findAccentedTitle(upperWord) {
+async function findAccentedCandidates(upperWord) {
   const lower = upperWord.toLowerCase();
-  const url = `https://fr.wiktionary.org/w/api.php?action=opensearch&search=${encodeURIComponent(lower)}&limit=8&format=json&origin=*`;
+  const url = `https://fr.wiktionary.org/w/api.php?action=query&list=search&srsearch=${encodeURIComponent(lower)}&srlimit=12&format=json&origin=*`;
   const res = await fetch(url);
-  if (!res.ok) return null;
+  if (!res.ok) return [];
   const data = await res.json();
-  const candidates = data?.[1] || [];
-  for (const cand of candidates) {
-    if (normalizeNoAccents(cand) === upperWord) {
-      return cand;
+  const items = data?.query?.search || [];
+
+  const matches = [];
+  for (const item of items) {
+    const t = item.title;
+    if (normalizeNoAccents(t) === upperWord && t !== lower) {
+      matches.push(t);
     }
   }
-  return null;
+  // Préférer les titres en minuscules (ex: "énol", "ère", "café", "étoile") avant les majuscules
+  matches.sort((a, b) => {
+    const aLower = a === a.toLowerCase() ? 0 : 1;
+    const bLower = b === b.toLowerCase() ? 0 : 1;
+    return aLower - bLower;
+  });
+  return matches.slice(0, 4);
 }
 
 export async function fetchDefinition(word) {
@@ -90,24 +101,23 @@ export async function fetchDefinition(word) {
 
   const promise = (async () => {
     try {
-      // 1. Essai direct en minuscules
-      let page = await queryExtractByTitle(key.toLowerCase());
-      let parsed = page ? parseFrenchExtract(page.extract, page.title) : null;
+      // 1. Essai direct en minuscules (avec vérification stricte de la section "== Français ==")
+      const direct = await queryExtractByTitle(key.toLowerCase());
+      const directParsed = direct ? parseFrenchExtract(direct.extract, direct.title) : null;
+      if (directParsed) return directParsed;
 
-      // 2. Si absent (mot accentué comme "café", "étoile", "étaient"), recherche Wiktionnaire
-      if (!parsed) {
-        const accented = await findAccentedTitle(key);
-        if (accented && accented !== key.toLowerCase()) {
-          page = await queryExtractByTitle(accented);
-          parsed = page ? parseFrenchExtract(page.extract, page.title) : null;
-        }
+      // 2. Recherche insensible aux accents (trouve "énol", "ère", "café", "étoile", "étaient"...)
+      const candidates = await findAccentedCandidates(key);
+      for (const cand of candidates) {
+        const page = await queryExtractByTitle(cand);
+        const parsed = page ? parseFrenchExtract(page.extract, page.title) : null;
+        if (parsed) return parsed;
       }
 
-      if (parsed) return parsed;
       return {
         title: key.toLowerCase(),
-        pos: 'Mot Scrabble (ODS8)',
-        text: 'Mot français valide (forme conjuguée, variante ou terme spécialisé du Scrabble).'
+        pos: 'Wiktionnaire',
+        text: 'Définition introuvable sur le Wiktionnaire pour cette forme.'
       };
     } catch {
       return {
