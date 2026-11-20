@@ -401,8 +401,8 @@ function finishClearing() {
   state.clearingSet = null;
   state.phase = 'PLAYING';
 
-  // Tous les 3 mots validés, un nouveau jeton spécial (💣 ou ⚡) apparaît sur le plateau !
-  if (state.wordsCount > 0 && state.wordsCount % 3 === 0) {
+  // Tous les 3 mots validés, un nouveau jeton spécial (💣 ou ⚡) apparaît seulement s'il reste assez de place
+  if (state.wordsCount > 0 && state.wordsCount % 3 === 0 && getEmptyCells().length >= 12) {
     spawnSpecialToken();
   }
 
@@ -412,17 +412,22 @@ function finishClearing() {
 }
 
 // Auto-placement quand le chrono Tempo atteint 0 en mode Arcade :
-// 1. Si le joueur survole une position valide, on pose la pièce exactement là !
-// 2. Sinon on cherche une autre place libre (y compris en pivotant ou avec un autre jeton).
-// 3. S'il n'y a plus aucune place, c'est perdu !
+// 1. Si le joueur survole une position valide, on pose le jeton exactement là.
+// 2. Sinon on cherche une autre place libre pour CE jeton.
+// 3. Si ce jeton n'a aucune place dans la grille : la partie est finie !
 function autoPlaceOnTimeout() {
-  // Annuler un éventuel drag en cours proprement
   const activeDragSlot = drag.active ? drag.slotIdx : state.selectedSlot;
   if (drag.active) {
     slotEls[drag.slotIdx]?.classList.remove('dragging');
     dragGhost.classList.remove('visible');
     drag.active = false;
     drag.moved = false;
+  }
+
+  const piece = state.tray[activeDragSlot];
+  if (!piece) {
+    triggerGameOver();
+    return;
   }
 
   // 1. Poser là où le jeton est actuellement placé/survolé si c'est valide
@@ -433,30 +438,24 @@ function autoPlaceOnTimeout() {
     return;
   }
 
-  // 2. Sinon chercher un autre emplacement libre pour ce jeton (ou un autre jeton de la main)
-  const slotOrder = [activeDragSlot, 0, 1, 2].filter((v, i, a) => a.indexOf(v) === i);
-  for (const sIdx of slotOrder) {
-    const piece = state.tray[sIdx];
-    if (!piece) continue;
-
-    for (let rot = 0; rot < 4; rot++) {
-      const validSpots = [];
-      for (let r = 0; r < GRID_SIZE; r++) {
-        for (let c = 0; c < GRID_SIZE; c++) {
-          if (canPlacePiece(state.grid, piece, r, c)) validSpots.push([r, c]);
-        }
+  // 2. Sinon chercher un autre emplacement libre pour CE jeton uniquement
+  for (let rot = 0; rot < 4; rot++) {
+    const validSpots = [];
+    for (let r = 0; r < GRID_SIZE; r++) {
+      for (let c = 0; c < GRID_SIZE; c++) {
+        if (canPlacePiece(state.grid, piece, r, c)) validSpots.push([r, c]);
       }
-      if (validSpots.length > 0) {
-        const [r, c] = validSpots[Math.floor(Math.random() * validSpots.length)];
-        renderer.spawnPopup('⏱️ TEMPS ÉCOULÉ !', r, c, '#ff2a55', 1.1);
-        placePieceFromSlot(sIdx, r, c, true);
-        return;
-      }
-      rotatePieceInPlace(piece);
     }
+    if (validSpots.length > 0) {
+      const [r, c] = validSpots[Math.floor(Math.random() * validSpots.length)];
+      renderer.spawnPopup('⏱️ TEMPS ÉCOULÉ !', r, c, '#ff2a55', 1.1);
+      placePieceFromSlot(activeDragSlot, r, c, true);
+      return;
+    }
+    rotatePieceInPlace(piece);
   }
 
-  // 3. Plus aucune place disponible : perdu !
+  // 3. Ce jeton n'a aucune place dans la grille : partie terminée !
   triggerGameOver();
 }
 
