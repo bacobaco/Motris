@@ -1,28 +1,25 @@
 <!DOCTYPE html>
 <html lang="fr">
-
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport"
-    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
-  <title>MOTRIS — Tetris de Mots Français</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <title>MOTRIS — Puzzle de Mots 8×8</title>
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=8" />
+  <link rel="stylesheet" href="style.css?v=9" />
 </head>
-
 <body>
   <div class="bg-orb orb-1"></div>
   <div class="bg-orb orb-2"></div>
   <div class="bg-orb orb-3"></div>
 
   <div class="app-shell">
-    <!-- Top Header -->
+    <!-- Header -->
     <header class="top-bar">
       <div class="brand">
         <span class="brand-logo">MOTRIS</span>
-        <span class="brand-badge" id="modeBadge">CLASSIQUE</span>
+        <span class="brand-badge" id="modeBadge">ARCADE</span>
       </div>
 
       <div class="hud-pills">
@@ -34,171 +31,167 @@
           <span class="hud-label">RECORD</span>
           <span class="hud-value accent" id="bestVal">0</span>
         </div>
-        <div class="hud-pill" id="levelPill">
-          <span class="hud-label" id="levelLabel">NIV.</span>
-          <span class="hud-value" id="levelVal">1</span>
+        <div class="hud-pill">
+          <span class="hud-label">COMBO</span>
+          <span class="hud-value combo-val" id="comboVal">×1</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <button class="icon-btn" id="soundBtn" title="Son" aria-label="Activer ou couper le son">🔊</button>
+        <button class="icon-btn" id="soundBtn" title="Son" aria-label="Son">🔊</button>
         <button class="icon-btn" id="pauseBtn" title="Pause" aria-label="Pause">⏸️</button>
-        <button class="icon-btn" id="helpBtn" title="Règles" aria-label="Règles du jeu">❓</button>
+        <button class="icon-btn" id="helpBtn" title="Règles" aria-label="Règles">❓</button>
       </div>
     </header>
 
-    <!-- Target Word Banner (Always visible, Desktop & Mobile) -->
-    <section class="target-banner" id="targetBanner">
-      <span class="target-label">🎯 MOT À CRÉER</span>
-      <div class="target-letters" id="targetWordDisplay">
-        <span class="target-tile">M</span>
-        <span class="target-tile">O</span>
-        <span class="target-tile">T</span>
-        <span class="target-tile">S</span>
+    <!-- Tempo Bar (Arcade) -->
+    <section class="tempo-wrap" id="tempoBarWrap">
+      <span class="tempo-label">⚡ TEMPO</span>
+      <div class="tempo-track">
+        <div class="tempo-fill" id="tempoFill"></div>
       </div>
-      <span class="target-hint">EXPLOSE + VOISINS !</span>
-      <span class="mobile-next-chip">SUIV. <strong id="mobileNextLetter">?</strong></span>
+      <span class="tempo-time" id="tempoText">15s</span>
     </section>
 
-    <!-- Main Game Area -->
-    <main class="game-layout">
-      <!-- Left Panel (Desktop) / Compact Bar (Mobile) -->
-      <aside class="side-panel left-panel">
-        <div class="glass-card mini-card">
-          <div class="card-title">LETTRE SUIVANTE</div>
-          <canvas id="nextCanvas" width="96" height="68"></canvas>
-        </div>
+    <!-- Main Stage -->
+    <main class="stage-layout">
+      <!-- Center 8x8 Square Board + Dock -->
+      <section class="play-column">
+        <div class="board-container">
+          <div class="board-frame" id="boardFrame">
+            <canvas id="gameCanvas"></canvas>
 
-        <div class="glass-card fever-card">
-          <div class="card-title">
-            <span>FIÈVRE</span>
-            <span id="feverStatus" class="fever-tag">0%</span>
-          </div>
-          <div class="fever-track">
-            <div class="fever-fill" id="feverFill"></div>
-          </div>
-        </div>
-      </aside>
+            <!-- Start Overlay -->
+            <div class="overlay active" id="startOverlay">
+              <div class="overlay-card">
+                <h1 class="hero-title">MOTRIS</h1>
+                <p class="hero-sub">Glisse tes jetons sur la grille <strong>8×8</strong>, forme des mots français et déclenche les <strong>💣 Bombes</strong> & <strong>⚡ Éclairs</strong> !</p>
 
-      <!-- Center Board -->
-      <section class="board-container">
-        <div class="board-frame" id="boardFrame">
-          <canvas id="gameCanvas"></canvas>
+                <div class="mode-selector">
+                  <button class="mode-btn selected" data-mode="arcade">
+                    <span class="mode-icon">⚡</span>
+                    <span class="mode-name">Arcade</span>
+                    <span class="mode-desc">Chrono Tempo</span>
+                  </button>
+                  <button class="mode-btn" data-mode="zen">
+                    <span class="mode-icon">🧘</span>
+                    <span class="mode-name">Zen</span>
+                    <span class="mode-desc">Sans chrono</span>
+                  </button>
+                </div>
 
-          <!-- Start Overlay -->
-          <div class="overlay active" id="startOverlay">
-            <div class="overlay-card">
-              <h1 class="hero-title">MOTRIS</h1>
-              <p class="hero-sub">Forme le <strong>Mot à créer</strong> pour tout faire exploser !</p>
-
-              <div class="mode-selector">
-                <button class="mode-btn selected" data-mode="classic">
-                  <span class="mode-icon">⚡</span>
-                  <span class="mode-name">Classique</span>
-                </button>
-                <button class="mode-btn" data-mode="blitz">
-                  <span class="mode-icon">⏱️</span>
-                  <span class="mode-name">Blitz 3m</span>
-                </button>
-                <button class="mode-btn" data-mode="zen">
-                  <span class="mode-icon">🧘</span>
-                  <span class="mode-name">Zen</span>
-                </button>
+                <button class="primary-btn" id="playBtn">JOUER</button>
               </div>
-
-              <button class="primary-btn" id="playBtn">JOUER</button>
             </div>
-          </div>
 
-          <!-- Pause Overlay -->
-          <div class="overlay" id="pauseOverlay">
-            <div class="overlay-card compact">
-              <h2>PAUSE</h2>
-              <button class="primary-btn" id="resumeBtn">REPRENDRE</button>
-              <button class="secondary-btn" id="restartFromPauseBtn">RECOMMENCER</button>
-            </div>
-          </div>
-
-          <!-- Game Over Overlay -->
-          <div class="overlay" id="gameOverOverlay">
-            <div class="overlay-card compact">
-              <h2 id="gameOverTitle">PARTIE TERMINÉE</h2>
-              <div class="stats-grid">
-                <div class="stat-box">
-                  <span class="stat-label">Score</span>
-                  <span class="stat-num" id="finalScore">0</span>
-                </div>
-                <div class="stat-box">
-                  <span class="stat-label">Mots cibles</span>
-                  <span class="stat-num" id="finalTargets">0</span>
-                </div>
-                <div class="stat-box full">
-                  <span class="stat-label">Mots trouvés</span>
-                  <span class="stat-num accent" id="finalWords">0</span>
-                </div>
+            <!-- Pause Overlay -->
+            <div class="overlay" id="pauseOverlay">
+              <div class="overlay-card compact">
+                <h2>PAUSE</h2>
+                <button class="primary-btn" id="resumeBtn">REPRENDRE</button>
+                <button class="secondary-btn" id="restartFromPauseBtn">RECOMMENCER</button>
               </div>
-              <button class="primary-btn" id="retryBtn">REJOUER</button>
-              <button class="secondary-btn" id="menuBtn">MENU</button>
+            </div>
+
+            <!-- Game Over Overlay -->
+            <div class="overlay" id="gameOverOverlay">
+              <div class="overlay-card compact">
+                <h2>PLUS DE PLACE !</h2>
+                <div class="stats-grid">
+                  <div class="stat-box">
+                    <span class="stat-label">Score</span>
+                    <span class="stat-num" id="finalScore">0</span>
+                  </div>
+                  <div class="stat-box">
+                    <span class="stat-label">Mots</span>
+                    <span class="stat-num" id="finalWords">0</span>
+                  </div>
+                  <div class="stat-box full">
+                    <span class="stat-label">Meilleur mot</span>
+                    <span class="stat-num accent" id="finalBestWord">—</span>
+                  </div>
+                </div>
+                <button class="primary-btn" id="retryBtn">REJOUER</button>
+                <button class="secondary-btn" id="menuBtn">MENU</button>
+              </div>
             </div>
           </div>
         </div>
+
+        <!-- Action Bar + 3-Piece Tray -->
+        <section class="dock-area">
+          <div class="action-bar">
+            <button class="action-pill rotate-pill" id="rotateBtn">↻ Tourner</button>
+            <button class="action-pill permute-pill" id="permuteBtn">⇄ Permuter</button>
+            <div class="fever-inline">
+              <span class="fever-inline-label">🔥</span>
+              <div class="fever-track">
+                <div class="fever-fill" id="feverFill"></div>
+              </div>
+              <span id="feverStatus" class="fever-tag">0%</span>
+            </div>
+          </div>
+
+          <div class="tray-grid">
+            <div class="tray-slot selected" id="slot0">
+              <canvas width="110" height="84"></canvas>
+            </div>
+            <div class="tray-slot" id="slot1">
+              <canvas width="110" height="84"></canvas>
+            </div>
+            <div class="tray-slot" id="slot2">
+              <canvas width="110" height="84"></canvas>
+            </div>
+          </div>
+        </section>
       </section>
 
-      <!-- Right Panel (Desktop only) -->
-      <aside class="side-panel right-panel">
+      <!-- Desktop Side Panel -->
+      <aside class="side-panel">
         <div class="glass-card words-card">
           <div class="card-title">MOTS VALIDÉS</div>
           <ul class="word-feed" id="wordFeed">
-            <li class="word-empty">Forme le mot cible…</li>
+            <li class="word-empty">Glisse un jeton pour former un mot…</li>
           </ul>
         </div>
 
         <div class="glass-card controls-card">
-          <div class="card-title">COMMANDES PC</div>
+          <div class="card-title">BONUS & ASTUCES</div>
           <div class="shortcut-list">
-            <div><kbd>←</kbd> <kbd>→</kbd> Déplacer</div>
-            <div><kbd>↓</kbd> Descendre</div>
-            <div><kbd>Espace</kbd> Chute directe</div>
+            <div>💣 <strong>Bombe</strong> : explose en 3×3</div>
+            <div>⚡ <strong>Éclair</strong> : détruit ligne + colonne</div>
+            <div>💎 <strong>×2 / ×3</strong> : multiplie le mot</div>
+            <div>★ <strong>Joker</strong> : n'importe quelle lettre</div>
+            <div><kbd>R</kbd> / Clic droit : Tourner</div>
+            <div><kbd>S</kbd> / <kbd>Espace</kbd> : Permuter</div>
           </div>
         </div>
       </aside>
     </main>
-
-    <!-- Touch Controls (Mobile / Tablet) -->
-    <nav class="touch-controls" aria-label="Contrôles tactiles">
-      <div class="touch-row">
-        <button class="touch-btn" data-action="left" aria-label="Gauche">◀</button>
-        <button class="touch-btn" data-action="down" aria-label="Descendre">▼</button>
-        <button class="touch-btn" data-action="right" aria-label="Droite">▶</button>
-        <button class="touch-btn drop-btn" data-action="drop" aria-label="Chute directe">⤓ CHUTE</button>
-      </div>
-    </nav>
   </div>
+
+  <!-- Floating Drag Ghost -->
+  <canvas id="dragGhost" width="136" height="136"></canvas>
 
   <!-- Help Modal -->
   <div class="modal-backdrop" id="helpModal">
     <div class="modal-card">
       <div class="modal-header">
-        <h3>Comment jouer à MOTRIS</h3>
+        <h3>Comment jouer à MOTRIS 8×8</h3>
         <button class="icon-btn" id="closeHelpBtn">✕</button>
       </div>
       <div class="modal-body">
         <ul>
-          <li><strong>Une lettre à la fois</strong> : Déplace la lettre avec <kbd>←</kbd> <kbd>→</kbd>, descends avec
-            <kbd>↓</kbd> ou lâche-la d'un coup avec <kbd>Espace</kbd>.
-          </li>
-          <li><strong>🎯 Mot à créer</strong> : Forme le mot affiché en haut (horizontalement ou verticalement) pour
-            déclencher une <strong>méga explosion</strong> qui détruit aussi toutes les cases adjacentes et rapporte un
-            énorme bonus !</li>
-          <li><strong>Mots bonus</strong> : Si un autre mot français (3+ lettres) se forme, il disparaît aussi et
-            rapporte des points bonus (mais moins que le mot cible).</li>
-          <li><strong>Cascades & Fièvre</strong> : Enchaîne les mots pour activer la Fièvre Fluo (×3 points).</li>
+          <li><strong>Glisse & pose</strong> (ou touche une pièce puis une case) tes barres de 2/3 lettres, formes en L ou jetons uniques sur la grille 8×8.</li>
+          <li><strong>↻ Tourner & ⇄ Permuter</strong> : pivote ta pièce ou inverse ses lettres avant de la poser.</li>
+          <li><strong>Mots de 3+ lettres</strong> : forme des mots français horizontalement ou verticalement pour faire exploser les tuiles et enchaîner les <strong>Combos</strong> !</li>
+          <li><strong>Jetons spéciaux</strong> : fais un mot à côté d'une <strong>💣 Bombe</strong> (explosion 3×3) ou d'un <strong>⚡ Éclair</strong> (laser ligne + colonne), et vise les cases <strong>×2 / ×3</strong> !</li>
+          <li><strong>⚡ Tempo</strong> : en mode Arcade, joue avant la fin de la barre, sinon la pièce se pose toute seule.</li>
         </ul>
       </div>
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=8"></script>
+  <script type="module" src="js/main.js?v=9"></script>
 </body>
-
 </html>

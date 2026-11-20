@@ -86,6 +86,20 @@ class SoundEngine {
     });
   }
 
+  bomb() {
+    this.playTone(130, 0.32, 'sawtooth', 0.2, 35);
+    setTimeout(() => this.playTone(85, 0.28, 'triangle', 0.18, 28), 40);
+  }
+
+  lightning() {
+    this.playTone(1200, 0.14, 'sawtooth', 0.12, 320);
+    setTimeout(() => this.playTone(1500, 0.16, 'square', 0.08, 440), 50);
+  }
+
+  warn() {
+    this.playTone(220, 0.09, 'square', 0.08, 180);
+  }
+
   gameOver() {
     [340, 290, 240, 170].forEach((f, i) => {
       setTimeout(() => this.playTone(f, 0.22, 'sawtooth', 0.09), i * 110);

@@ -1,29 +1,43 @@
-import { LetterBag } from './pieces.js?v=6';
-import { findMatches, pickTargetWord, previewGhostWords } from './words.js?v=7';
-import { Renderer } from './renderer.js?v=8';
-import { sound } from './audio.js?v=6';
+import {
+  PieceGenerator,
+  rotatePieceInPlace,
+  permutePieceLetters,
+  getPieceDimensions
+} from './pieces.js?v=9';
+import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=9';
+import { Renderer } from './renderer.js?v=9';
+import { sound } from './audio.js?v=9';
 
-const COLS = 10;
-const ROWS = 15;
-const CLEAR_DURATION = 420; // ms d'animation avant explosion
-const FEVER_DURATION = 14000; // 14s de Mode Fièvre
+const GRID_SIZE = 8;
+const CLEAR_DURATION = 380;
+const FEVER_DURATION = 14000;
 
-// Éléments DOM
+// DOM
 const gameCanvas = document.getElementById('gameCanvas');
-const nextCanvas = document.getElementById('nextCanvas');
 const boardFrame = document.getElementById('boardFrame');
-const targetBanner = document.getElementById('targetBanner');
-const targetWordDisplay = document.getElementById('targetWordDisplay');
-const mobileNextLetter = document.getElementById('mobileNextLetter');
+const dragGhost = document.getElementById('dragGhost');
 
 const scoreVal = document.getElementById('scoreVal');
 const bestVal = document.getElementById('bestVal');
-const levelVal = document.getElementById('levelVal');
-const levelLabel = document.getElementById('levelLabel');
+const comboVal = document.getElementById('comboVal');
 const modeBadge = document.getElementById('modeBadge');
+
+const tempoBarWrap = document.getElementById('tempoBarWrap');
+const tempoFill = document.getElementById('tempoFill');
+const tempoText = document.getElementById('tempoText');
 const feverFill = document.getElementById('feverFill');
 const feverStatus = document.getElementById('feverStatus');
 const wordFeed = document.getElementById('wordFeed');
+
+const slotEls = [
+  document.getElementById('slot0'),
+  document.getElementById('slot1'),
+  document.getElementById('slot2')
+];
+const slotCanvases = slotEls.map(el => el.querySelector('canvas'));
+
+const rotateBtn = document.getElementById('rotateBtn');
+const permuteBtn = document.getElementById('permuteBtn');
 
 const startOverlay = document.getElementById('startOverlay');
 const pauseOverlay = document.getElementById('pauseOverlay');
@@ -31,167 +45,152 @@ const gameOverOverlay = document.getElementById('gameOverOverlay');
 const helpModal = document.getElementById('helpModal');
 
 const finalScore = document.getElementById('finalScore');
-const finalTargets = document.getElementById('finalTargets');
 const finalWords = document.getElementById('finalWords');
-const gameOverTitle = document.getElementById('gameOverTitle');
+const finalBestWord = document.getElementById('finalBestWord');
 
-const renderer = new Renderer(gameCanvas, COLS, ROWS);
-const bag = new LetterBag();
+const renderer = new Renderer(gameCanvas, GRID_SIZE);
+const gen = new PieceGenerator();
 
-// État du jeu
 const state = {
-  mode: 'classic', // 'classic' | 'blitz' | 'zen'
-  phase: 'MENU',   // 'MENU' | 'PLAYING' | 'CLEARING' | 'FALLING' | 'PAUSED' | 'GAMEOVER'
+  mode: 'arcade', // 'arcade' | 'zen'
+  phase: 'MENU',  // 'MENU' | 'PLAYING' | 'CLEARING' | 'PAUSED' | 'GAMEOVER'
   grid: createEmptyGrid(),
-  activePiece: null,
-  nextPiece: null,
-  ghostY: 0,
-  ghostMatches: new Set(),
+  bonusMap: new Map(), // "r,c" -> 2 | 3
 
-  targetWord: 'LUNE',
-  targetsCompleted: 0,
-  pendingNewTarget: false,
+  tray: [null, null, null],
+  selectedSlot: 0,
 
   score: 0,
-  bestScore: Number(localStorage.getItem('motris_best') || 0),
-  level: 1,
+  bestScore: Number(localStorage.getItem('motris8_best') || 0),
   wordsCount: 0,
+  bestWord: '',
+  bestWordPts: 0,
   combo: 0,
+  level: 1,
+
+  tempoMax: 15000,
+  tempoRemaining: 15000,
 
   fever: 0,
   feverActive: false,
   feverEndTime: 0,
 
-  blitzRemaining: 180000,
-  dropTimer: 0,
-  lastTime: 0,
-
+  hoverPreview: null, // { piece, row, col, valid, matchedCells, foundWords }
   clearingSet: null,
-  clearingWords: [],
   clearingStart: 0,
-  clearingProgress: 0
+  clearingProgress: 0,
+
+  lastTime: 0
 };
 
 bestVal.textContent = state.bestScore.toLocaleString('fr-FR');
 
 function createEmptyGrid() {
-  return Array.from({ length: ROWS }, () => Array(COLS).fill(null));
+  return Array.from({ length: GRID_SIZE }, () => Array(GRID_SIZE).fill(null));
 }
 
-function renderTargetWordUI(word) {
-  targetWordDisplay.innerHTML = '';
-  for (const ch of word) {
-    const span = document.createElement('span');
-    span.className = 'target-tile';
-    span.textContent = ch;
-    targetWordDisplay.appendChild(span);
+function getEmptyCells() {
+  const res = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (!state.grid[r][c]) res.push([r, c]);
+    }
+  }
+  return res;
+}
+
+function spawnBonusCells(count = 4) {
+  const empty = getEmptyCells().filter(([r, c]) => !state.bonusMap.has(`${r},${c}`));
+  for (let i = 0; i < count && empty.length > 0; i++) {
+    const idx = Math.floor(Math.random() * empty.length);
+    const [r, c] = empty.splice(idx, 1)[0];
+    state.bonusMap.set(`${r},${c}`, Math.random() < 0.3 ? 3 : 2);
   }
 }
 
-function assignNewTargetWord() {
-  state.targetWord = pickTargetWord(state.level, state.targetWord);
-  bag.setTargetWord(state.targetWord);
-  renderTargetWordUI(state.targetWord);
+function spawnSpecialToken(type = null) {
+  const empty = getEmptyCells();
+  if (empty.length === 0) return;
+  const [r, c] = empty[Math.floor(Math.random() * empty.length)];
+  const letter = type || (Math.random() < 0.55 ? '💣' : '⚡');
+  state.grid[r][c] = { letter, spawnAnim: 0 };
 }
 
-function getDropInterval() {
-  if (state.mode === 'zen') return Infinity;
-  const base = state.mode === 'blitz' ? 680 : Math.max(160, 820 - (state.level - 1) * 70);
-  return state.feverActive ? base * 1.2 : base;
+function seedStartingBoard() {
+  state.grid = createEmptyGrid();
+  state.bonusMap = new Map();
+
+  // 4 cases multiplicateurs ×2 / ×3
+  spawnBonusCells(4);
+
+  // 6 lettres de départ espacées autour du centre pour démarrer tout de suite des mots
+  const centerCoords = [
+    [2, 2], [2, 5], [3, 3], [4, 4], [5, 2], [5, 5], [3, 5], [4, 2]
+  ];
+  for (let i = centerCoords.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [centerCoords[i], centerCoords[j]] = [centerCoords[j], centerCoords[i]];
+  }
+  for (let i = 0; i < 6; i++) {
+    const [r, c] = centerCoords[i];
+    state.grid[r][c] = { letter: gen.randomStartingLetter(), spawnAnim: 0 };
+  }
+
+  // 1 Bombe 💣 et 1 Éclair ⚡ déjà placés sur le plateau !
+  spawnSpecialToken('💣');
+  spawnSpecialToken('⚡');
 }
 
-function isValidPosition(piece, offsetX = 0, offsetY = 0) {
-  for (const b of piece.blocks) {
-    const nx = piece.x + b.x + offsetX;
-    const ny = piece.y + b.y + offsetY;
-    if (nx < 0 || nx >= COLS || ny >= ROWS) return false;
-    if (ny >= 0 && state.grid[ny][nx]) return false;
-  }
-  return true;
+function refillTraySlot(idx) {
+  const jokerChance = state.feverActive ? 0.16 : 0.08;
+  state.tray[idx] = gen.generatePiece(jokerChance);
+  renderTray();
 }
 
-function computeGhost() {
-  if (!state.activePiece) return;
-  let gy = state.activePiece.y;
-  while (isValidPosition(state.activePiece, 0, gy - state.activePiece.y + 1)) {
-    gy++;
+function renderTray() {
+  for (let i = 0; i < 3; i++) {
+    const el = slotEls[i];
+    el.classList.toggle('selected', i === state.selectedSlot);
+    renderer.renderPieceToCanvas(slotCanvases[i], state.tray[i], state.feverActive, 30);
   }
-  state.ghostY = gy;
-  state.ghostMatches = previewGhostWords(state.grid, state.activePiece, gy, state.targetWord, 3);
 }
 
-function spawnNextPiece() {
-  if (state.pendingNewTarget) {
-    state.pendingNewTarget = false;
-    assignNewTargetWord();
-    state.nextPiece = bag.generatePiece(COLS);
-  }
+function getTempoDuration() {
+  return Math.max(9000, 15000 - (state.level - 1) * 800);
+}
 
-  if (!state.nextPiece) {
-    state.nextPiece = bag.generatePiece(COLS);
-  }
-  state.activePiece = state.nextPiece;
-  state.nextPiece = bag.generatePiece(COLS);
-  state.dropTimer = 0;
-
-  renderer.renderMiniPiece(nextCanvas, state.nextPiece, state.feverActive);
-  if (mobileNextLetter && state.nextPiece?.blocks?.[0]) {
-    mobileNextLetter.textContent = state.nextPiece.blocks[0].letter;
-  }
-
-  if (!isValidPosition(state.activePiece)) {
-    triggerGameOver('GRILLE PLEINE');
-    return;
-  }
-  state.phase = 'PLAYING';
-  computeGhost();
+function resetTempo() {
+  state.tempoMax = getTempoDuration();
+  state.tempoRemaining = state.tempoMax;
 }
 
 function startGame() {
   sound.init();
-  state.grid = createEmptyGrid();
+  seedStartingBoard();
   state.score = 0;
-  state.level = 1;
   state.wordsCount = 0;
-  state.targetsCompleted = 0;
-  state.pendingNewTarget = false;
+  state.bestWord = '';
+  state.bestWordPts = 0;
   state.combo = 0;
+  state.level = 1;
   state.fever = 0;
   state.feverActive = false;
-  state.nextPiece = null;
-  state.blitzRemaining = 180000;
+  state.hoverPreview = null;
   state.clearingSet = null;
+  state.selectedSlot = 0;
   state.phase = 'PLAYING';
 
+  resetTempo();
+  tempoBarWrap.classList.toggle('hidden', state.mode === 'zen');
   boardFrame.classList.remove('fever-active');
-  wordFeed.innerHTML = '<li class="word-empty">Forme le mot cible…</li>';
+  modeBadge.textContent = state.mode === 'arcade' ? 'ARCADE' : 'ZEN';
+  wordFeed.innerHTML = '<li class="word-empty">Glisse un jeton pour former un mot…</li>';
 
-  assignNewTargetWord();
-
-  modeBadge.textContent =
-    state.mode === 'classic' ? 'CLASSIQUE' : state.mode === 'blitz' ? 'BLITZ 3M' : 'ZEN';
-  levelLabel.textContent = state.mode === 'blitz' ? 'TEMPS' : 'NIV.';
+  for (let i = 0; i < 3; i++) refillTraySlot(i);
 
   updateHUD();
   hideAllOverlays();
-  spawnNextPiece();
-}
-
-function triggerGameOver(title = 'PARTIE TERMINÉE') {
-  state.phase = 'GAMEOVER';
-  sound.gameOver();
-
-  if (state.score > state.bestScore) {
-    state.bestScore = state.score;
-    localStorage.setItem('motris_best', String(state.bestScore));
-    bestVal.textContent = state.bestScore.toLocaleString('fr-FR');
-  }
-
-  gameOverTitle.textContent = title;
-  finalScore.textContent = state.score.toLocaleString('fr-FR');
-  finalTargets.textContent = String(state.targetsCompleted);
-  finalWords.textContent = String(state.wordsCount);
-  gameOverOverlay.classList.add('active');
+  renderer.resize();
 }
 
 function hideAllOverlays() {
@@ -200,20 +199,37 @@ function hideAllOverlays() {
   gameOverOverlay.classList.remove('active');
 }
 
+function triggerGameOver() {
+  state.phase = 'GAMEOVER';
+  sound.gameOver();
+
+  if (state.score > state.bestScore) {
+    state.bestScore = state.score;
+    localStorage.setItem('motris8_best', String(state.bestScore));
+    bestVal.textContent = state.bestScore.toLocaleString('fr-FR');
+  }
+
+  finalScore.textContent = state.score.toLocaleString('fr-FR');
+  finalWords.textContent = String(state.wordsCount);
+  finalBestWord.textContent = state.bestWord ? `${state.bestWord} (+${state.bestWordPts.toLocaleString('fr-FR')})` : '—';
+  gameOverOverlay.classList.add('active');
+}
+
 function updateHUD() {
   scoreVal.textContent = state.score.toLocaleString('fr-FR');
-  if (state.mode === 'blitz') {
-    const secs = Math.max(0, Math.ceil(state.blitzRemaining / 1000));
-    const m = Math.floor(secs / 60);
-    const s = String(secs % 60).padStart(2, '0');
-    levelVal.textContent = `${m}:${s}`;
-  } else {
-    levelVal.textContent = String(state.level);
-  }
+  comboVal.textContent = state.combo > 1 ? `×${state.combo}` : '×1';
+  comboVal.classList.toggle('hot', state.combo > 1);
 
   const pct = Math.min(100, Math.round(state.fever));
   feverFill.style.width = `${pct}%`;
   feverStatus.textContent = state.feverActive ? 'FLUO ×3' : `${pct}%`;
+
+  if (state.mode === 'arcade') {
+    const tPct = Math.max(0, (state.tempoRemaining / state.tempoMax) * 100);
+    tempoFill.style.width = `${tPct}%`;
+    tempoFill.classList.toggle('danger', tPct < 28);
+    tempoText.textContent = `${Math.ceil(state.tempoRemaining / 1000)}s`;
+  }
 }
 
 function addWordToFeed(entry) {
@@ -221,151 +237,154 @@ function addWordToFeed(entry) {
   if (empty) empty.remove();
 
   const li = document.createElement('li');
-  const tag = entry.isTarget ? '<span class="word-badge-sq">🎯 CIBLE</span>' : '';
-  li.innerHTML = `<span>${entry.word}${tag}</span><span class="word-pts">+${entry.points.toLocaleString('fr-FR')}</span>`;
+  const multTag = entry.cellMult > 1 ? `<span class="word-badge-sq">×${entry.cellMult}</span>` : '';
+  li.innerHTML = `<span>${entry.word}${multTag}</span><span class="word-pts">+${entry.points.toLocaleString('fr-FR')}</span>`;
   wordFeed.prepend(li);
 
-  while (wordFeed.children.length > 12) {
+  while (wordFeed.children.length > 10) {
     wordFeed.lastElementChild.remove();
   }
 }
 
-// Actions simples du joueur : Gauche, Droite, Bas, Chute directe
-function movePiece(dx) {
-  if (state.phase !== 'PLAYING' || !state.activePiece) return;
-  if (isValidPosition(state.activePiece, dx, 0)) {
-    state.activePiece.x += dx;
-    sound.move();
-    computeGhost();
-  }
-}
-
-function softDrop() {
-  if (state.phase !== 'PLAYING' || !state.activePiece) return;
-  if (isValidPosition(state.activePiece, 0, 1)) {
-    state.activePiece.y++;
-    state.dropTimer = 0;
-  } else {
-    lockPiece();
-  }
-}
-
-function hardDrop() {
-  if (state.phase !== 'PLAYING' || !state.activePiece) return;
-  state.activePiece.y = state.ghostY;
-  sound.drop();
-  lockPiece();
-}
-
-function applyColumnGravity() {
-  let moved = false;
-  for (let c = 0; c < COLS; c++) {
-    let writeR = ROWS - 1;
-    for (let r = ROWS - 1; r >= 0; r--) {
-      if (state.grid[r][c]) {
-        if (r !== writeR) {
-          state.grid[writeR][c] = state.grid[r][c];
-          state.grid[r][c] = null;
-          moved = true;
+// Vérifie si au moins une des 3 pièces peut encore tenir sur la grille (avec ou sans rotation)
+function hasAnyValidMove() {
+  for (const piece of state.tray) {
+    if (!piece) continue;
+    const testPiece = { type: piece.type, blocks: piece.blocks.map(b => ({ ...b })) };
+    for (let rot = 0; rot < 4; rot++) {
+      for (let r = 0; r < GRID_SIZE; r++) {
+        for (let c = 0; c < GRID_SIZE; c++) {
+          if (canPlacePiece(state.grid, testPiece, r, c)) return true;
         }
-        writeR--;
       }
+      rotatePieceInPlace(testPiece);
     }
   }
-  return moved;
+  return false;
 }
 
-function lockPiece() {
-  const p = state.activePiece;
-  for (const b of p.blocks) {
-    const r = p.y + b.y;
-    const c = p.x + b.x;
-    if (r >= 0 && r < ROWS && c >= 0 && c < COLS) {
-      state.grid[r][c] = { letter: b.letter, visualY: r };
-    }
-  }
-  state.activePiece = null;
-  state.ghostMatches = new Set();
-  state.combo = 0;
-  sound.lock();
+// Place une pièce sur la grille à (row, col)
+function placePieceFromSlot(slotIdx, row, col, isAuto = false) {
+  const piece = state.tray[slotIdx];
+  if (!piece || !canPlacePiece(state.grid, piece, row, col)) return false;
 
-  if (applyColumnGravity()) {
-    state.phase = 'FALLING';
+  for (const b of piece.blocks) {
+    state.grid[row + b.y][col + b.x] = {
+      letter: b.letter,
+      spawnAnim: 0
+    };
+  }
+
+  state.hoverPreview = null;
+  if (isAuto) {
+    sound.warn();
+    renderer.triggerShake(7);
+    state.combo = 0;
   } else {
-    checkBoardMatches();
+    sound.lock();
   }
-}
 
-function checkBoardMatches() {
-  const { matchedCells, foundWords, targetCompleted } = findMatches(state.grid, state.targetWord, 3);
+  // Recharger la pièce du slot et le tempo
+  refillTraySlot(slotIdx);
+  resetTempo();
+
+  // Vérifier les mots formés !
+  const {
+    matchedCells,
+    foundWords,
+    triggeredBombs,
+    triggeredLightnings,
+    usedBonuses
+  } = findMatches(state.grid, state.bonusMap, 3);
 
   if (matchedCells.size > 0) {
     state.combo++;
     state.phase = 'CLEARING';
     state.clearingSet = matchedCells;
-    state.clearingWords = foundWords;
     state.clearingStart = performance.now();
     state.clearingProgress = 0;
 
-    sound.wordClear(state.combo, targetCompleted);
-    renderer.triggerShake(targetCompleted ? 12 : state.combo > 1 ? 8 : 4);
+    // Effets spéciaux Bombes & Éclairs
+    const hasBomb = triggeredBombs.length > 0;
+    const hasLight = triggeredLightnings.length > 0;
 
-    if (targetCompleted) {
-      state.targetsCompleted++;
-      state.pendingNewTarget = true;
-      state.level = 1 + Math.floor(state.targetsCompleted / 2);
-
-      targetBanner.classList.add('celebrate');
-      setTimeout(() => targetBanner.classList.remove('celebrate'), 700);
+    if (hasBomb) {
+      sound.bomb();
+      triggeredBombs.forEach(b => renderer.spawnShockwave(b.r, b.c, '#ff2a55'));
     }
+    if (hasLight) {
+      sound.lightning();
+      triggeredLightnings.forEach(l => renderer.spawnLaser(l.r, l.c));
+    }
+    sound.wordClear(state.combo, hasBomb || hasLight);
+    renderer.triggerShake(hasBomb || hasLight ? 12 : state.combo > 1 ? 8 : 5);
 
+    // Consommer les cases ×2 / ×3 utilisées et en faire réapparaître de nouvelles
+    usedBonuses.forEach(k => state.bonusMap.delete(k));
+    if (usedBonuses.size > 0) spawnBonusCells(usedBonuses.size);
+
+    // Score + Popups
     foundWords.forEach((w, idx) => {
       const mult = (state.feverActive ? 3 : 1) * state.combo;
       const pts = w.points * mult;
       state.score += pts;
       state.wordsCount++;
 
-      addWordToFeed({ word: w.word, points: pts, isTarget: w.isTarget });
+      if (pts > state.bestWordPts) {
+        state.bestWordPts = pts;
+        state.bestWord = w.word;
+      }
 
-      const midCell = w.cells[Math.floor(w.cells.length / 2)];
-      const formattedPts = pts.toLocaleString('fr-FR');
-      const label = w.isTarget
-        ? `🎯 ${w.word} +${formattedPts} !`
-        : `${w.word} +${formattedPts}`;
+      addWordToFeed({ word: w.word, points: pts, cellMult: w.cellMult });
 
+      const mid = w.cells[Math.floor(w.cells.length / 2)];
       renderer.spawnPopup(
-        label,
-        midCell[0] - idx * 0.9,
-        midCell[1],
-        w.isTarget ? '#00ff88' : '#ffea00',
-        w.isTarget ? 1.3 : 1.0
+        `${w.word} +${pts.toLocaleString('fr-FR')}`,
+        mid[0] - idx * 0.7,
+        mid[1],
+        w.cellMult > 1 ? '#ff2aff' : '#ffea00',
+        w.cellMult > 1 ? 1.2 : 1.05
       );
     });
 
+    if (hasBomb) {
+      state.score += 2500 * triggeredBombs.length;
+      renderer.spawnPopup('💥 BOOM 3×3 !', triggeredBombs[0].r, triggeredBombs[0].c, '#ff2a55', 1.25);
+    }
+    if (hasLight) {
+      state.score += 3000 * triggeredLightnings.length;
+      renderer.spawnPopup('⚡ LASER !', triggeredLightnings[0].r, triggeredLightnings[0].c, '#00f5ff', 1.25);
+    }
     if (state.combo > 1) {
-      renderer.spawnPopup(`⚡ CASCADE ×${state.combo} !`, 4, COLS / 2, '#00f5ff', 1.25);
+      renderer.spawnPopup(`🔥 COMBO ×${state.combo} !`, 1.5, GRID_SIZE / 2, '#00ff88', 1.3);
     }
 
-    // Progression Fièvre
+    // Niveau & Fièvre
+    state.level = 1 + Math.floor(state.wordsCount / 6);
     if (!state.feverActive) {
-      const feverGain = targetCompleted ? 45 : foundWords.length * 14;
-      state.fever = Math.min(100, state.fever + feverGain + (state.combo - 1) * 12);
+      state.fever = Math.min(100, state.fever + foundWords.length * 22 + (state.combo - 1) * 15);
       if (state.fever >= 100) {
         state.feverActive = true;
         state.feverEndTime = performance.now() + FEVER_DURATION;
         boardFrame.classList.add('fever-active');
         sound.fever();
-        renderer.spawnPopup('🔥 FIÈVRE FLUO ×3 !', 6, COLS / 2, '#ff2aff', 1.35);
+        renderer.spawnPopup('🌈 FIÈVRE FLUO ×3 !', 3.5, GRID_SIZE / 2, '#ff2aff', 1.35);
       }
     }
 
     updateHUD();
   } else {
-    spawnNextPiece();
+    // Aucun mot sur ce coup : réinitialise le combo
+    if (!isAuto) state.combo = 0;
+    updateHUD();
+    if (!hasAnyValidMove()) {
+      triggerGameOver();
+    }
   }
+  return true;
 }
 
-function finishClearingAndApplyGravity() {
+function finishClearing() {
   if (!state.clearingSet) {
     state.phase = 'PLAYING';
     return;
@@ -380,167 +399,270 @@ function finishClearingAndApplyGravity() {
     }
   }
   state.clearingSet = null;
-  state.clearingWords = [];
+  state.phase = 'PLAYING';
 
-  if (applyColumnGravity()) {
-    state.phase = 'FALLING';
-  } else {
-    state.phase = 'PLAYING';
-    checkBoardMatches();
+  // Tous les 3 mots validés, un nouveau jeton spécial (💣 ou ⚡) apparaît sur le plateau !
+  if (state.wordsCount > 0 && state.wordsCount % 3 === 0) {
+    spawnSpecialToken();
+  }
+
+  if (!hasAnyValidMove()) {
+    triggerGameOver();
   }
 }
 
-// Boucle principale (60 FPS)
+// Auto-placement quand le chrono Tempo atteint 0 en mode Arcade
+function autoPlaceOnTimeout() {
+  const idx = state.selectedSlot;
+  const piece = state.tray[idx];
+  if (!piece) return;
+
+  const validSpots = [];
+  for (let r = 0; r < GRID_SIZE; r++) {
+    for (let c = 0; c < GRID_SIZE; c++) {
+      if (canPlacePiece(state.grid, piece, r, c)) validSpots.push([r, c]);
+    }
+  }
+
+  if (validSpots.length > 0) {
+    const [r, c] = validSpots[Math.floor(Math.random() * validSpots.length)];
+    renderer.spawnPopup('⏱️ TEMPS ÉCOULÉ !', r, c, '#ff2a55', 1.1);
+    placePieceFromSlot(idx, r, c, true);
+  } else if (!hasAnyValidMove()) {
+    triggerGameOver();
+  } else {
+    resetTempo();
+  }
+}
+
+// --- Actions Tourner & Permuter ---
+function rotateSelected() {
+  if (state.phase !== 'PLAYING') return;
+  const p = state.tray[state.selectedSlot];
+  if (!p) return;
+  rotatePieceInPlace(p);
+  sound.rotate();
+  renderTray();
+}
+
+function permuteSelected() {
+  if (state.phase !== 'PLAYING') return;
+  const p = state.tray[state.selectedSlot];
+  if (!p) return;
+  permutePieceLetters(p);
+  sound.permute();
+  renderTray();
+}
+
+rotateBtn.addEventListener('click', rotateSelected);
+permuteBtn.addEventListener('click', permuteSelected);
+
+// --- Drag & Drop (Souris & Tactile) + Tap-to-place ---
+const drag = {
+  active: false,
+  moved: false,
+  slotIdx: -1,
+  startX: 0,
+  startY: 0,
+  isTouch: false
+};
+
+function getGridCoordsFromClient(clientX, clientY, piece, isTouch) {
+  const rect = gameCanvas.getBoundingClientRect();
+  const offsetY = isTouch ? -64 : 0; // Décalage vers le haut au doigt pour ne pas masquer la pièce !
+  const x = clientX - rect.left;
+  const y = (clientY + offsetY) - rect.top;
+
+  if (x < -24 || y < -24 || x > rect.width + 24 || y > rect.height + 24) {
+    return null;
+  }
+
+  const cs = rect.width / GRID_SIZE;
+  const { w, h } = getPieceDimensions(piece);
+  const col = Math.round((x / cs) - w / 2);
+  const row = Math.round((y / cs) - h / 2);
+  return { row, col };
+}
+
+function updateDragGhostPosition(clientX, clientY, isTouch) {
+  const offsetY = isTouch ? -64 : 0;
+  dragGhost.style.left = `${clientX}px`;
+  dragGhost.style.top = `${clientY + offsetY}px`;
+}
+
+slotEls.forEach((el, idx) => {
+  el.addEventListener('pointerdown', (e) => {
+    if (state.phase !== 'PLAYING') return;
+    const piece = state.tray[idx];
+    if (!piece) return;
+
+    e.preventDefault();
+    state.selectedSlot = idx;
+    renderTray();
+
+    drag.active = true;
+    drag.moved = false;
+    drag.slotIdx = idx;
+    drag.startX = e.clientX;
+    drag.startY = e.clientY;
+    drag.isTouch = e.pointerType === 'touch';
+
+    el.setPointerCapture?.(e.pointerId);
+  });
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!drag.active || state.phase !== 'PLAYING') return;
+  const piece = state.tray[drag.slotIdx];
+  if (!piece) return;
+
+  const dist = Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY);
+  if (!drag.moved && dist > 8) {
+    drag.moved = true;
+    slotEls[drag.slotIdx].classList.add('dragging');
+    dragGhost.classList.add('visible');
+    renderer.renderPieceToCanvas(dragGhost, piece, state.feverActive, 38);
+  }
+
+  if (drag.moved) {
+    updateDragGhostPosition(e.clientX, e.clientY, drag.isTouch);
+    const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, drag.isTouch);
+    if (pos) {
+      const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+      state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
+    } else {
+      state.hoverPreview = null;
+    }
+  }
+});
+
+window.addEventListener('pointerup', (e) => {
+  if (!drag.active) return;
+  const slotIdx = drag.slotIdx;
+  const wasMoved = drag.moved;
+  const isTouch = drag.isTouch;
+
+  drag.active = false;
+  drag.moved = false;
+  slotEls[slotIdx]?.classList.remove('dragging');
+  dragGhost.classList.remove('visible');
+
+  if (wasMoved && state.phase === 'PLAYING') {
+    const piece = state.tray[slotIdx];
+    const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, isTouch);
+    if (pos && canPlacePiece(state.grid, piece, pos.row, pos.col)) {
+      placePieceFromSlot(slotIdx, pos.row, pos.col);
+    }
+    state.hoverPreview = null;
+  }
+});
+
+// Tap direct sur le plateau 8×8 pour poser la pièce sélectionnée
+gameCanvas.addEventListener('pointerdown', (e) => {
+  if (state.phase !== 'PLAYING' || drag.active) return;
+  const piece = state.tray[state.selectedSlot];
+  if (!piece) return;
+
+  const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, false);
+  if (pos && canPlacePiece(state.grid, piece, pos.row, pos.col)) {
+    placePieceFromSlot(state.selectedSlot, pos.row, pos.col);
+  }
+});
+
+// Aperçu au survol souris sur PC
+gameCanvas.addEventListener('pointermove', (e) => {
+  if (e.pointerType === 'touch' || drag.active || state.phase !== 'PLAYING') return;
+  const piece = state.tray[state.selectedSlot];
+  if (!piece) return;
+  const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, false);
+  if (pos) {
+    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+    state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
+  } else {
+    state.hoverPreview = null;
+  }
+});
+
+gameCanvas.addEventListener('pointerleave', () => {
+  if (!drag.active) state.hoverPreview = null;
+});
+
+// Clic droit sur PC pour tourner rapidement
+gameCanvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  rotateSelected();
+});
+
+// Raccourcis Clavier PC
+window.addEventListener('keydown', (e) => {
+  if (helpModal.classList.contains('open')) {
+    if (e.key === 'Escape') helpModal.classList.remove('open');
+    return;
+  }
+  if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
+    togglePause();
+    return;
+  }
+  if (state.phase !== 'PLAYING') return;
+
+  if (e.key === 'r' || e.key === 'R' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    rotateSelected();
+  } else if (e.key === 's' || e.key === 'S' || e.key === ' ') {
+    e.preventDefault();
+    permuteSelected();
+  } else if (e.key === '1' || e.key === '2' || e.key === '3') {
+    state.selectedSlot = Number(e.key) - 1;
+    renderTray();
+  }
+});
+
+// Boucle 60 FPS
 function loop(now) {
   const dt = Math.min(50, now - (state.lastTime || now));
   state.lastTime = now;
 
-  // Mode Fièvre
-  if (state.feverActive && state.phase !== 'PAUSED' && state.phase !== 'MENU') {
-    const rem = state.feverEndTime - now;
-    if (rem <= 0) {
-      state.feverActive = false;
-      state.fever = 0;
-      boardFrame.classList.remove('fever-active');
-    } else {
-      state.fever = (rem / FEVER_DURATION) * 100;
-    }
-    updateHUD();
-  }
-
-  // Chrono Blitz
-  if (state.mode === 'blitz' && (state.phase === 'PLAYING' || state.phase === 'CLEARING' || state.phase === 'FALLING')) {
-    state.blitzRemaining -= dt;
-    updateHUD();
-    if (state.blitzRemaining <= 0) {
-      triggerGameOver('TEMPS ÉCOULÉ !');
-    }
-  }
-
   try {
-    if (state.phase === 'PLAYING') {
-      const interval = getDropInterval();
-      if (interval !== Infinity) {
-        state.dropTimer += dt;
-        if (state.dropTimer >= interval) {
-          state.dropTimer = 0;
-          softDrop();
-        }
+    if (state.feverActive && state.phase !== 'PAUSED' && state.phase !== 'MENU') {
+      const rem = state.feverEndTime - now;
+      if (rem <= 0) {
+        state.feverActive = false;
+        state.fever = 0;
+        boardFrame.classList.remove('fever-active');
+        renderTray();
+      } else {
+        state.fever = (rem / FEVER_DURATION) * 100;
+      }
+      updateHUD();
+    }
+
+    if (state.phase === 'PLAYING' && state.mode === 'arcade') {
+      state.tempoRemaining -= dt;
+      updateHUD();
+      if (state.tempoRemaining <= 0) {
+        autoPlaceOnTimeout();
       }
     } else if (state.phase === 'CLEARING') {
       state.clearingProgress = Math.min(1, (now - state.clearingStart) / CLEAR_DURATION);
       if (state.clearingProgress >= 1) {
-        finishClearingAndApplyGravity();
-      }
-    } else if (state.phase === 'FALLING') {
-      let stillFalling = false;
-      const speed = 0.36;
-      for (let r = 0; r < ROWS; r++) {
-        for (let c = 0; c < COLS; c++) {
-          const cell = state.grid[r][c];
-          if (cell && cell.visualY < r) {
-            cell.visualY = Math.min(r, cell.visualY + speed);
-            if (cell.visualY < r) stillFalling = true;
-          }
-        }
-      }
-      if (!stillFalling) {
-        state.phase = 'PLAYING';
-        checkBoardMatches();
+        finishClearing();
       }
     }
 
     renderer.updateEffects();
     renderer.render(state, now);
   } catch (err) {
-    console.error('Erreur boucle Motris:', err);
-    if (state.phase === 'CLEARING' || state.phase === 'FALLING') {
+    console.error('Erreur Motris:', err);
+    if (state.phase === 'CLEARING') {
       state.clearingSet = null;
       state.phase = 'PLAYING';
-      if (!state.activePiece) spawnNextPiece();
     }
   }
 
   requestAnimationFrame(loop);
 }
 
-// --- Commandes Clavier (ultra simples : Gauche, Droite, Bas, Espace) ---
-window.addEventListener('keydown', (e) => {
-  if (helpModal.classList.contains('open')) {
-    if (e.key === 'Escape') helpModal.classList.remove('open');
-    return;
-  }
-
-  if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
-    togglePause();
-    return;
-  }
-
-  if (state.phase !== 'PLAYING') return;
-
-  switch (e.key) {
-    case 'ArrowLeft':
-    case 'a':
-    case 'A':
-      e.preventDefault();
-      movePiece(-1);
-      break;
-    case 'ArrowRight':
-    case 'd':
-    case 'D':
-      e.preventDefault();
-      movePiece(1);
-      break;
-    case 'ArrowDown':
-      e.preventDefault();
-      softDrop();
-      break;
-    case ' ':
-      e.preventDefault();
-      hardDrop();
-      break;
-  }
-});
-
-// --- Boutons Tactiles ---
-document.querySelectorAll('.touch-btn').forEach(btn => {
-  const action = btn.dataset.action;
-  btn.addEventListener('pointerdown', (e) => {
-    e.preventDefault();
-    if (action === 'left') movePiece(-1);
-    else if (action === 'right') movePiece(1);
-    else if (action === 'down') softDrop();
-    else if (action === 'drop') hardDrop();
-  });
-});
-
-// Glisser directement sur le plateau (mobile)
-let touchStartX = 0;
-let touchStartY = 0;
-
-gameCanvas.addEventListener('touchstart', (e) => {
-  if (state.phase !== 'PLAYING') return;
-  const t = e.touches[0];
-  touchStartX = t.clientX;
-  touchStartY = t.clientY;
-}, { passive: true });
-
-gameCanvas.addEventListener('touchmove', (e) => {
-  if (state.phase !== 'PLAYING') return;
-  const t = e.touches[0];
-  const dx = t.clientX - touchStartX;
-  const dy = t.clientY - touchStartY;
-
-  if (Math.abs(dx) > 28) {
-    movePiece(dx > 0 ? 1 : -1);
-    touchStartX = t.clientX;
-  } else if (dy > 42) {
-    softDrop();
-    touchStartY = t.clientY;
-  }
-}, { passive: true });
-
-// --- UI & Menus ---
+// UI & Menus
 document.querySelectorAll('.mode-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.mode-btn').forEach(b => b.classList.remove('selected'));
@@ -577,12 +699,8 @@ soundBtn.addEventListener('click', () => {
   soundBtn.textContent = muted ? '🔇' : '🔊';
 });
 
-document.getElementById('helpBtn').addEventListener('click', () => {
-  helpModal.classList.add('open');
-});
-document.getElementById('closeHelpBtn').addEventListener('click', () => {
-  helpModal.classList.remove('open');
-});
+document.getElementById('helpBtn').addEventListener('click', () => helpModal.classList.add('open'));
+document.getElementById('closeHelpBtn').addEventListener('click', () => helpModal.classList.remove('open'));
 helpModal.addEventListener('click', (e) => {
   if (e.target === helpModal) helpModal.classList.remove('open');
 });
@@ -591,6 +709,4 @@ window.addEventListener('resize', () => {
   renderer.resize();
 });
 
-// Afficher un mot exemple dans le bandeau au chargement
-renderTargetWordUI('MOTRIS');
 requestAnimationFrame(loop);
