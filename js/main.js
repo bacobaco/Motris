@@ -185,9 +185,10 @@ function startGame() {
   tempoBarWrap.classList.toggle('hidden', state.mode === 'zen');
   boardFrame.classList.remove('fever-active');
   modeBadge.textContent = state.mode === 'arcade' ? 'ARCADE' : 'ZEN';
-  wordFeed.innerHTML = '<li class="word-empty">Glisse un jeton pour former un mot…</li>';
-  lastValidatedWord = '';
-  lastWordPill?.classList.remove('show');
+  wordFeed.innerHTML = '<li class="word-empty">Glisse un jeton…</li>';
+  if (mobileWordsBar) {
+    mobileWordsBar.innerHTML = '<span class="mword-empty">Mots validés…</span>';
+  }
   hideWordDefinition();
 
   for (let i = 0; i < 3; i++) refillTraySlot(i);
@@ -240,8 +241,7 @@ const defPopover = document.getElementById('defPopover');
 const defPopWord = document.getElementById('defPopWord');
 const defPopPos = document.getElementById('defPopPos');
 const defPopText = document.getElementById('defPopText');
-const lastWordPill = document.getElementById('lastWordPill');
-let lastValidatedWord = '';
+const mobileWordsBar = document.getElementById('mobileWordsBar');
 let defHideTimer = null;
 
 function positionDefPopover(anchorEl) {
@@ -250,9 +250,9 @@ function positionDefPopover(anchorEl) {
   let left = rect.left - popW - 10;
   let top = rect.top - 6;
 
-  // Si pas assez de place à gauche (ex. sur mobile), placer sous l'élément centré
+  // Si pas assez de place à gauche (ex. sur mobile), placer juste sous l'élément
   if (left < 10) {
-    left = Math.max(10, Math.min(window.innerWidth - popW - 10, rect.right - popW));
+    left = Math.max(10, Math.min(window.innerWidth - popW - 10, rect.left));
     top = rect.bottom + 8;
   }
   top = Math.max(10, Math.min(window.innerHeight - 130, top));
@@ -270,8 +270,7 @@ async function showWordDefinition(word, anchorEl, autoHideMs = 0) {
   defPopover.classList.add('visible');
 
   const def = await fetchDefinition(word);
-  // Vérifier qu'on affiche toujours ce mot
-  if (defPopWord.textContent.toUpperCase() === word.toUpperCase() || defPopover.classList.contains('visible')) {
+  if (defPopover.classList.contains('visible')) {
     defPopWord.textContent = def.title || word;
     defPopPos.textContent = def.pos || 'Français';
     defPopText.textContent = def.text;
@@ -288,18 +287,8 @@ function hideWordDefinition() {
   defPopover.classList.remove('visible');
 }
 
-lastWordPill?.addEventListener('click', (e) => {
-  e.stopPropagation();
-  if (!lastValidatedWord) return;
-  if (defPopover.classList.contains('visible')) {
-    hideWordDefinition();
-  } else {
-    showWordDefinition(lastValidatedWord, lastWordPill, 5500);
-  }
-});
-
 window.addEventListener('pointerdown', (e) => {
-  if (defPopover.classList.contains('visible') && e.target !== lastWordPill && !e.target.closest?.('.has-def')) {
+  if (defPopover.classList.contains('visible') && !e.target.closest?.('.has-def') && !e.target.closest?.('.mword-chip')) {
     hideWordDefinition();
   }
 });
@@ -308,7 +297,7 @@ function addWordToFeed(entry) {
   const empty = wordFeed.querySelector('.word-empty');
   if (empty) empty.remove();
 
-  // Précharger la définition en arrière-plan (instantané au survol !)
+  // Précharger la définition en arrière-plan (instantané au survol / tap !)
   fetchDefinition(entry.word);
 
   const li = document.createElement('li');
@@ -325,11 +314,22 @@ function addWordToFeed(entry) {
 
   wordFeed.prepend(li);
 
-  // Mettre à jour la pilule mobile du dernier mot validé
-  lastValidatedWord = entry.word;
-  if (lastWordPill) {
-    lastWordPill.textContent = `✨ ${entry.word} ⓘ`;
-    lastWordPill.classList.add('show');
+  // Ajouter aussi dans la barre mobile au-dessus de la grille (5 derniers mots)
+  if (mobileWordsBar) {
+    const mEmpty = mobileWordsBar.querySelector('.mword-empty');
+    if (mEmpty) mEmpty.remove();
+
+    const chip = document.createElement('button');
+    chip.className = 'mword-chip';
+    chip.innerHTML = `${entry.word}<span>ⓘ</span>`;
+    chip.addEventListener('click', (e) => {
+      e.stopPropagation();
+      showWordDefinition(entry.word, chip, 5500);
+    });
+    mobileWordsBar.prepend(chip);
+    while (mobileWordsBar.children.length > 6) {
+      mobileWordsBar.lastElementChild.remove();
+    }
   }
 
   while (wordFeed.children.length > 10) {
@@ -672,15 +672,31 @@ window.addEventListener('pointerup', (e) => {
   }
 });
 
-// Tap direct sur le plateau 8×8 pour poser la pièce sélectionnée
+// Toucher le plateau 8×8 : permet de GLISSER le jeton le long de la grille, et valide au relâchement !
 gameCanvas.addEventListener('pointerdown', (e) => {
   if (state.phase !== 'PLAYING' || drag.active) return;
   const piece = state.tray[state.selectedSlot];
   if (!piece) return;
 
-  const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, false);
-  if (pos && canPlacePiece(state.grid, piece, pos.row, pos.col)) {
-    placePieceFromSlot(state.selectedSlot, pos.row, pos.col);
+  e.preventDefault();
+  const isTouch = e.pointerType === 'touch';
+
+  drag.active = true;
+  drag.moved = true; // Active immédiatement l'aperçu & le glissement sur la grille
+  drag.slotIdx = state.selectedSlot;
+  drag.startX = e.clientX;
+  drag.startY = e.clientY;
+  drag.isTouch = isTouch;
+
+  slotEls[drag.slotIdx].classList.add('dragging');
+  gameCanvas.setPointerCapture?.(e.pointerId);
+
+  const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, isTouch);
+  if (pos) {
+    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+    state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
+  } else {
+    state.hoverPreview = null;
   }
 });
 

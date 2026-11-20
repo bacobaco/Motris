@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=17" />
+  <link rel="stylesheet" href="style.css?v=18" />
 </head>
 
 <body>
@@ -64,10 +64,12 @@
     <main class="stage-layout">
       <!-- Center 8x8 Square Board + Dock -->
       <section class="play-column">
+        <!-- Bandeau mobile des derniers mots validés (juste au-dessus de la grille) -->
+        <div class="mobile-words-bar" id="mobileWordsBar"></div>
+
         <div class="board-container">
           <div class="board-frame" id="boardFrame">
             <canvas id="gameCanvas"></canvas>
-            <button class="last-word-pill" id="lastWordPill" aria-label="Voir la définition du dernier mot"></button>
 
             <!-- Start Overlay -->
             <div class="overlay active" id="startOverlay">
@@ -304,7 +306,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=16"></script>
+  <script type="module" src="js/main.js?v=18"></script>
 </body>
 
 </html>

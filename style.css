@@ -1123,32 +1123,54 @@ kbd {
   color: #e2e8f0;
 }
 
-/* Mobile Last-Word Definition Pill */
-.last-word-pill {
+/* Mobile Validated Words Bar (juste au-dessus de la grille, hors du plateau) */
+.mobile-words-bar {
   display: none;
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 6;
-  padding: 4px 10px;
+  width: 100%;
+  flex-shrink: 0;
+  gap: 5px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 1px 2px;
+  min-height: 24px;
+  align-items: center;
+}
+
+.mobile-words-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.mword-chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
   border-radius: 999px;
-  border: 1px solid rgba(0, 245, 255, 0.55);
-  background: rgba(9, 14, 31, 0.85);
-  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0, 245, 255, 0.45);
+  background: rgba(18, 25, 48, 0.85);
   color: #ffff8d;
   font-family: inherit;
-  font-size: 0.74rem;
+  font-size: 0.72rem;
   font-weight: 800;
   cursor: pointer;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.45);
+}
+
+.mword-chip span {
+  color: var(--neon-cyan);
+  font-size: 0.68rem;
+}
+
+.mword-empty {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  opacity: 0.75;
 }
 
 /* Mobile & Tablet Responsive — espace MAX pour la grille 8×8 */
 @media (max-width: 820px) {
-  .last-word-pill.show {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
+  .mobile-words-bar {
+    display: flex;
   }
 
   .app-shell {
