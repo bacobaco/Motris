@@ -4,7 +4,7 @@ import {
   permutePieceLetters,
   getPieceDimensions
 } from './pieces.js?v=9';
-import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=13';
+import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=19';
 import { Renderer } from './renderer.js?v=9';
 import { sound } from './audio.js?v=9';
 import { fetchDefinition } from './definitions.js?v=16';
@@ -28,7 +28,6 @@ const tempoFill = document.getElementById('tempoFill');
 const tempoText = document.getElementById('tempoText');
 const feverFill = document.getElementById('feverFill');
 const feverStatus = document.getElementById('feverStatus');
-const wordFeed = document.getElementById('wordFeed');
 
 const slotEls = [
   document.getElementById('slot0'),
@@ -185,9 +184,8 @@ function startGame() {
   tempoBarWrap.classList.toggle('hidden', state.mode === 'zen');
   boardFrame.classList.remove('fever-active');
   modeBadge.textContent = state.mode === 'arcade' ? 'ARCADE' : 'ZEN';
-  wordFeed.innerHTML = '<li class="word-empty">Glisse un jeton…</li>';
-  if (mobileWordsBar) {
-    mobileWordsBar.innerHTML = '<span class="mword-empty">Mots validés…</span>';
+  if (wordsBar) {
+    wordsBar.innerHTML = '<span class="mword-empty">Mots validés (4+ lettres) — clique ou survole pour la définition…</span>';
   }
   hideWordDefinition();
 
@@ -241,21 +239,14 @@ const defPopover = document.getElementById('defPopover');
 const defPopWord = document.getElementById('defPopWord');
 const defPopPos = document.getElementById('defPopPos');
 const defPopText = document.getElementById('defPopText');
-const mobileWordsBar = document.getElementById('mobileWordsBar');
+const wordsBar = document.getElementById('wordsBar');
 let defHideTimer = null;
 
 function positionDefPopover(anchorEl) {
   const rect = anchorEl.getBoundingClientRect();
-  const popW = Math.min(270, window.innerWidth - 20);
-  let left = rect.left - popW - 10;
-  let top = rect.top - 6;
-
-  // Si pas assez de place à gauche (ex. sur mobile), placer juste sous l'élément
-  if (left < 10) {
-    left = Math.max(10, Math.min(window.innerWidth - popW - 10, rect.left));
-    top = rect.bottom + 8;
-  }
-  top = Math.max(10, Math.min(window.innerHeight - 130, top));
+  const popW = Math.min(280, window.innerWidth - 20);
+  const left = Math.max(10, Math.min(window.innerWidth - popW - 10, rect.left + rect.width / 2 - popW / 2));
+  const top = Math.min(window.innerHeight - 130, rect.bottom + 8);
 
   defPopover.style.left = `${left}px`;
   defPopover.style.top = `${top}px`;
@@ -288,52 +279,35 @@ function hideWordDefinition() {
 }
 
 window.addEventListener('pointerdown', (e) => {
-  if (defPopover.classList.contains('visible') && !e.target.closest?.('.has-def') && !e.target.closest?.('.mword-chip')) {
+  if (defPopover.classList.contains('visible') && !e.target.closest?.('.mword-chip')) {
     hideWordDefinition();
   }
 });
 
 function addWordToFeed(entry) {
-  const empty = wordFeed.querySelector('.word-empty');
-  if (empty) empty.remove();
-
   // Précharger la définition en arrière-plan (instantané au survol / tap !)
   fetchDefinition(entry.word);
 
-  const li = document.createElement('li');
-  li.className = 'has-def';
-  const multTag = entry.cellMult > 1 ? `<span class="word-badge-sq">×${entry.cellMult}</span>` : '';
-  li.innerHTML = `<span>${entry.word}${multTag}<span class="word-info-icon">ⓘ</span></span><span class="word-pts">+${entry.points.toLocaleString('fr-FR')}</span>`;
-
-  li.addEventListener('mouseenter', () => showWordDefinition(entry.word, li));
-  li.addEventListener('mouseleave', hideWordDefinition);
-  li.addEventListener('click', (e) => {
-    e.stopPropagation();
-    showWordDefinition(entry.word, li, 5500);
-  });
-
-  wordFeed.prepend(li);
-
-  // Ajouter aussi dans la barre mobile au-dessus de la grille (5 derniers mots)
-  if (mobileWordsBar) {
-    const mEmpty = mobileWordsBar.querySelector('.mword-empty');
-    if (mEmpty) mEmpty.remove();
+  if (wordsBar) {
+    const empty = wordsBar.querySelector('.mword-empty');
+    if (empty) empty.remove();
 
     const chip = document.createElement('button');
     chip.className = 'mword-chip';
-    chip.innerHTML = `${entry.word}<span>ⓘ</span>`;
+    const mult = entry.cellMult > 1 ? ` ×${entry.cellMult}` : '';
+    chip.innerHTML = `${entry.word}${mult} <span>ⓘ</span>`;
+
+    chip.addEventListener('mouseenter', () => showWordDefinition(entry.word, chip));
+    chip.addEventListener('mouseleave', hideWordDefinition);
     chip.addEventListener('click', (e) => {
       e.stopPropagation();
       showWordDefinition(entry.word, chip, 5500);
     });
-    mobileWordsBar.prepend(chip);
-    while (mobileWordsBar.children.length > 6) {
-      mobileWordsBar.lastElementChild.remove();
-    }
-  }
 
-  while (wordFeed.children.length > 10) {
-    wordFeed.lastElementChild.remove();
+    wordsBar.prepend(chip);
+    while (wordsBar.children.length > 10) {
+      wordsBar.lastElementChild.remove();
+    }
   }
 }
 
@@ -386,7 +360,7 @@ function placePieceFromSlot(slotIdx, row, col, isAuto = false) {
     triggeredBombs,
     triggeredLightnings,
     usedBonuses
-  } = findMatches(state.grid, state.bonusMap, 3);
+  } = findMatches(state.grid, state.bonusMap, 4);
 
   if (matchedCells.size > 0) {
     state.combo++;

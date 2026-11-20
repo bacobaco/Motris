@@ -80,14 +80,14 @@ body {
   }
 }
 
-/* App Shell */
+/* App Shell — colonne compacte et centrée sur PC comme sur mobile */
 .app-shell {
   position: relative;
   z-index: 1;
   height: 100%;
   display: flex;
   flex-direction: column;
-  max-width: 900px;
+  max-width: 560px;
   margin: 0 auto;
   padding: 6px 10px;
   gap: 6px;
@@ -250,39 +250,43 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-/* Main Stage */
-.stage-layout {
+/* Main Play Column — tout est aligné et collé autour de la grille 8×8 */
+.play-column {
   flex: 1;
   min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(0, 1fr) 178px;
-  gap: 10px;
-  align-items: stretch;
-}
-
-.play-column {
   display: flex;
   flex-direction: column;
-  min-height: 0;
-  gap: 6px;
-  align-items: center;
-}
-
-/* 8x8 Square Board — occupe toujours le plus grand carré possible sans perte de place */
-.board-container {
-  flex: 1;
-  min-height: 0;
-  width: 100%;
-  container-type: size;
-  display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
+  --board-size: min(100%, calc(100dvh - 242px));
+}
+
+/* Bandeau des mots validés juste au-dessus de la grille (PC & Mobile) */
+.words-bar {
+  width: var(--board-size);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 4px 8px;
+  min-height: 32px;
+  border-radius: 12px;
+  background: var(--bg-panel);
+  border: 1px solid var(--border-glass);
+}
+
+.words-bar::-webkit-scrollbar {
+  display: none;
 }
 
 .board-frame {
   position: relative;
-  width: min(100cqw, 100cqh);
-  height: min(100cqw, 100cqh);
+  width: var(--board-size);
+  height: var(--board-size);
+  flex-shrink: 0;
   border-radius: 20px;
   padding: 5px;
   background: linear-gradient(155deg, #00f5ff, #6366f1, #ff2aff);
@@ -315,14 +319,13 @@ body {
   cursor: pointer;
 }
 
-/* Bottom Dock: Action Bar + 3-Piece Tray */
+/* Bottom Dock : exactement de la même largeur et collé sous la grille 8×8 */
 .dock-area {
-  width: 100%;
-  max-width: 500px;
+  width: var(--board-size);
   flex-shrink: 0;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
   padding-bottom: env(safe-area-inset-bottom, 2px);
 }
 
@@ -1242,6 +1245,13 @@ kbd {
 
   .play-column {
     gap: 4px;
+    --board-size: min(100%, calc(100dvh - 196px));
+  }
+
+  .words-bar {
+    padding: 3px 6px;
+    min-height: 26px;
+    border-radius: 10px;
   }
 
   .board-frame {

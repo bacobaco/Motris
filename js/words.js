@@ -10,7 +10,7 @@ Object.values(TARGET_WORDS).flat().forEach(w => WORD_SET.add(w));
 const resolveCache = new Map();
 
 export function resolveWord(str) {
-  if (str.length < 3 || str.length > 8) return null;
+  if (str.length < 4 || str.length > 8) return null;
   if (str.includes('💣') || str.includes('⚡')) return null;
 
   const starIdx = str.indexOf('★');
@@ -71,8 +71,8 @@ export function scoreWord(word, rawLetters, cellMult = 1) {
   return total;
 }
 
-// Scanne la grille 8×8 (horizontal et vertical) + déclenche Bombes & Éclairs touchés
-export function findMatches(grid, bonusMap = new Map(), minLen = 3) {
+// Scanne la grille 8×8 (horizontal et vertical, 4+ lettres, séquence entière valide comme au Scrabble)
+export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
   const size = grid.length;
   const matchedCells = new Set();
   const foundWords = [];
@@ -93,7 +93,7 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 3) {
     return mult;
   };
 
-  // 1. Mots Horizontaux (gauche -> droite)
+  // 1. Mots Horizontaux (gauche -> droite) : la séquence contiguë entière doit former un vrai mot (4+ lettres)
   for (let r = 0; r < size; r++) {
     let c = 0;
     while (c < size) {
@@ -102,28 +102,21 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 3) {
       while (end < size && isLetterTile(grid[r][end])) end++;
       const segLen = end - c;
 
-      if (segLen >= minLen) {
-        let best = null;
-        for (let len = Math.min(segLen, 8); len >= minLen; len--) {
-          for (let start = c; start <= end - len; start++) {
-            let raw = '';
-            for (let k = 0; k < len; k++) raw += grid[r][start + k].letter;
-            const resolved = resolveWord(raw);
-            if (resolved) { best = { resolved, raw, start, len }; break; }
-          }
-          if (best) break;
-        }
-        if (best) {
+      if (segLen >= minLen && segLen <= 8) {
+        let raw = '';
+        for (let k = c; k < end; k++) raw += grid[r][k].letter;
+        const resolved = resolveWord(raw);
+        if (resolved) {
           const cells = [];
-          for (let k = 0; k < best.len; k++) {
-            cells.push([r, best.start + k]);
-            matchedCells.add(`${r},${best.start + k}`);
+          for (let k = c; k < end; k++) {
+            cells.push([r, k]);
+            matchedCells.add(`${r},${k}`);
           }
           const cellMult = computeCellMult(cells);
           foundWords.push({
-            word: best.resolved,
+            word: resolved,
             cells,
-            points: scoreWord(best.resolved, best.raw, cellMult),
+            points: scoreWord(resolved, raw, cellMult),
             cellMult
           });
         }
@@ -132,7 +125,7 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 3) {
     }
   }
 
-  // 2. Mots Verticaux (haut -> bas)
+  // 2. Mots Verticaux (haut -> bas) : la séquence contiguë entière doit former un vrai mot (4+ lettres)
   for (let c = 0; c < size; c++) {
     let r = 0;
     while (r < size) {
@@ -141,28 +134,21 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 3) {
       while (end < size && isLetterTile(grid[end][c])) end++;
       const segLen = end - r;
 
-      if (segLen >= minLen) {
-        let best = null;
-        for (let len = Math.min(segLen, 8); len >= minLen; len--) {
-          for (let start = r; start <= end - len; start++) {
-            let raw = '';
-            for (let k = 0; k < len; k++) raw += grid[start + k][c].letter;
-            const resolved = resolveWord(raw);
-            if (resolved) { best = { resolved, raw, start, len }; break; }
-          }
-          if (best) break;
-        }
-        if (best) {
+      if (segLen >= minLen && segLen <= 8) {
+        let raw = '';
+        for (let k = r; k < end; k++) raw += grid[k][c].letter;
+        const resolved = resolveWord(raw);
+        if (resolved) {
           const cells = [];
-          for (let k = 0; k < best.len; k++) {
-            cells.push([best.start + k, c]);
-            matchedCells.add(`${best.start + k},${c}`);
+          for (let k = r; k < end; k++) {
+            cells.push([k, c]);
+            matchedCells.add(`${k},${c}`);
           }
           const cellMult = computeCellMult(cells);
           foundWords.push({
-            word: best.resolved,
+            word: resolved,
             cells,
-            points: scoreWord(best.resolved, best.raw, cellMult),
+            points: scoreWord(resolved, raw, cellMult),
             cellMult
           });
         }
@@ -248,6 +234,6 @@ export function previewPlacement(grid, bonusMap, piece, row, col) {
   for (const b of piece.blocks) {
     sim[row + b.y][col + b.x] = { letter: b.letter };
   }
-  const res = findMatches(sim, bonusMap, 3);
+  const res = findMatches(sim, bonusMap, 4);
   return { valid: true, ...res };
 }
