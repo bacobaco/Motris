@@ -4,7 +4,7 @@ import {
   permutePieceLetters,
   getPieceDimensions
 } from './pieces.js?v=9';
-import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=9';
+import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=12';
 import { Renderer } from './renderer.js?v=9';
 import { sound } from './audio.js?v=9';
 
