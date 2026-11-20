@@ -1,4 +1,4 @@
-import { DICT_RAW } from '../data/dictionnaire.js?v=12';
+import { DICT_RAW } from '../data/dictionnaire.js?v=13';
 import { TARGET_WORDS } from '../data/mots_cibles.js?v=9';
 import { LETTER_POINTS, RARE_LETTERS } from './pieces.js?v=9';
 
