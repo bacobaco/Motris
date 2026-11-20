@@ -14,17 +14,25 @@ export const LETTER_POINTS = {
 };
 
 const VOWEL_POOL = 'EEEEEEEEEEAAAAAAIIIIIIOOOOOOUUUU';
+const CONSONANT_EASY = 'SSSSSSRRRRRRNNNNNNTTTTTTLLLLLDDDDCCCPPPPMMMMFFVVBBGG';
 const CONSONANT_POOL = 'SSSSSSRRRRRRNNNNNNTTTTTTLLLLLDDDDCCCPPPPMMMMFFVVBBGGHHQJXZ';
+const CONSONANT_HARD = 'SSSSRRRRNNNNTTTTLLLLDDDCCCNPPPMMMFFFVVVBBBGGGHHHQQJJXXZZKKWW';
 
 export const SHAPES = {
-  BAR2:   [[0, 0], [1, 0]],
-  BAR3:   [[0, 0], [1, 0], [2, 0]],
-  L3:     [[0, 0], [0, 1], [1, 1]],
+  BAR2: [[0, 0], [1, 0]],
+  BAR3: [[0, 0], [1, 0], [2, 0]],
+  L3: [[0, 0], [0, 1], [1, 1]],
   SINGLE: [[0, 0]]
 };
 
-// Distribution dynamique : beaucoup de barres de 2/3 et de L, + jetons uniques tactiques
-const SHAPE_BAG = ['BAR2', 'BAR2', 'BAR2', 'BAR3', 'BAR3', 'L3', 'L3', 'L3', 'SINGLE'];
+// Sacs de formes selon la difficulté (1 = Facile -> 5 = Expert)
+const SHAPE_BAGS_BY_DIFF = {
+  1: ['SINGLE', 'SINGLE', 'SINGLE', 'BAR2', 'BAR2', 'BAR2', 'BAR2', 'BAR3', 'L3'],
+  2: ['SINGLE', 'SINGLE', 'BAR2', 'BAR2', 'BAR2', 'BAR3', 'BAR3', 'L3', 'L3'],
+  3: ['SINGLE', 'BAR2', 'BAR2', 'BAR2', 'BAR3', 'BAR3', 'L3', 'L3', 'L3'],
+  4: ['SINGLE', 'BAR2', 'BAR2', 'BAR3', 'BAR3', 'BAR3', 'L3', 'L3', 'L3', 'L3'],
+  5: ['BAR2', 'BAR3', 'BAR3', 'BAR3', 'BAR3', 'L3', 'L3', 'L3', 'L3', 'L3']
+};
 
 function pickRandom(str) {
   return str[Math.floor(Math.random() * str.length)];
@@ -52,11 +60,14 @@ export function normalizeBlocks(blocks) {
 export class PieceGenerator {
   constructor() {
     this.bag = [];
+    this.lastDiff = 3;
   }
 
-  nextShape() {
-    if (this.bag.length === 0) {
-      this.bag = [...SHAPE_BAG];
+  nextShape(difficulty = 3) {
+    if (this.bag.length === 0 || this.lastDiff !== difficulty) {
+      this.lastDiff = difficulty;
+      const template = SHAPE_BAGS_BY_DIFF[difficulty] || SHAPE_BAGS_BY_DIFF[3];
+      this.bag = [...template];
       for (let i = this.bag.length - 1; i > 0; i--) {
         const j = Math.floor(Math.random() * (i + 1));
         [this.bag[i], this.bag[j]] = [this.bag[j], this.bag[i]];
@@ -65,25 +76,29 @@ export class PieceGenerator {
     return this.bag.pop();
   }
 
-  generatePiece(jokerChance = 0.08) {
-    const type = this.nextShape();
+  generatePiece(difficulty = 3, feverActive = false) {
+    const type = this.nextShape(difficulty);
     const coords = SHAPES[type].map(([x, y]) => ({ x, y }));
     const count = coords.length;
+
+    const jokerByDiff = { 1: 0.2, 2: 0.14, 3: 0.08, 4: 0.04, 5: 0.01 };
+    const jokerChance = (jokerByDiff[difficulty] ?? 0.08) + (feverActive ? 0.08 : 0);
+    const consPool = difficulty <= 2 ? CONSONANT_EASY : (difficulty >= 4 ? CONSONANT_HARD : CONSONANT_POOL);
 
     const letters = [];
     if (count === 1) {
       // Jeton unique : souvent une voyelle utile, une consonne ou un ★ Joker !
-      if (Math.random() < Math.max(0.28, jokerChance)) {
+      if (Math.random() < Math.max(difficulty <= 2 ? 0.35 : 0.2, jokerChance)) {
         letters.push('★');
       } else {
-        letters.push(Math.random() < 0.5 ? pickRandom(VOWEL_POOL) : pickRandom(CONSONANT_POOL));
+        letters.push(Math.random() < 0.5 ? pickRandom(VOWEL_POOL) : pickRandom(consPool));
       }
     } else {
       const vowelCount = count === 2
         ? (Math.random() < 0.8 ? 1 : 2)
-        : (Math.random() < 0.55 ? 1 : 2);
+        : (Math.random() < (difficulty <= 2 ? 0.45 : 0.6) ? 1 : 2);
       for (let i = 0; i < vowelCount; i++) letters.push(pickRandom(VOWEL_POOL));
-      for (let i = vowelCount; i < count; i++) letters.push(pickRandom(CONSONANT_POOL));
+      for (let i = vowelCount; i < count; i++) letters.push(pickRandom(consPool));
 
       if (Math.random() < jokerChance) {
         letters[Math.floor(Math.random() * count)] = '★';

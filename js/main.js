@@ -3,7 +3,7 @@ import {
   rotatePieceInPlace,
   permutePieceLetters,
   getPieceDimensions
-} from './pieces.js?v=9';
+} from './pieces.js?v=25';
 import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=24';
 import { Renderer } from './renderer.js?v=24';
 import { sound } from './audio.js?v=9';
@@ -52,7 +52,16 @@ const finalBestWord = document.getElementById('finalBestWord');
 const renderer = new Renderer(gameCanvas, GRID_SIZE);
 const gen = new PieceGenerator();
 
+const DIFFICULTY_LABELS = {
+  1: '1 — Facile : beaucoup de jetons 1–2 cases, jokers fréquents, lettres simples',
+  2: '2 — Cool : bon mix de jetons 1–2 cases, jokers généreux, consonnes courantes',
+  3: '3 — Normal : équilibré (barres 2/3, formes en L, jokers & lettres standards)',
+  4: '4 — Difficile : surtout barres de 3 & L, peu de jokers, lettres plus rares',
+  5: '5 — Expert : quasi uniquement barres de 3 & L, jokers très rares, lettres rares'
+};
+
 const DEFAULT_SETTINGS = {
+  difficulty: 3,
   allowReverse: false,
   tempoSec: 60,
   minLen: 4,
@@ -64,14 +73,14 @@ function loadSettings() {
   try {
     const raw = localStorage.getItem('motris_settings');
     if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
-  } catch {}
+  } catch { }
   return { ...DEFAULT_SETTINGS };
 }
 
 function saveSettings(s) {
   try {
     localStorage.setItem('motris_settings', JSON.stringify(s));
-  } catch {}
+  } catch { }
 }
 
 const initialSettings = loadSettings();
@@ -180,8 +189,7 @@ function getWordOptions() {
 }
 
 function refillTraySlot(idx) {
-  const jokerChance = state.feverActive ? 0.16 : 0.08;
-  state.tray[idx] = gen.generatePiece(jokerChance);
+  state.tray[idx] = gen.generatePiece(state.settings.difficulty, state.feverActive);
   renderTray();
 }
 
@@ -970,11 +978,16 @@ const settingsModal = document.getElementById('settingsModal');
 const optReverse = document.getElementById('optReverse');
 const optPreview = document.getElementById('optPreview');
 const optSpecials = document.getElementById('optSpecials');
+const optDiffBtns = [...document.querySelectorAll('#optDiffGroup .seg-btn')];
+const diffDesc = document.getElementById('diffDesc');
 const optTempoBtns = [...document.querySelectorAll('#optTempoGroup .seg-btn')];
 const optMinLenBtns = [...document.querySelectorAll('#optMinLenGroup .seg-btn')];
 let pausedBySettings = false;
 
 function syncSettingsUI() {
+  const d = state.settings.difficulty || 3;
+  optDiffBtns.forEach(b => b.classList.toggle('selected', Number(b.dataset.val) === d));
+  if (diffDesc && DIFFICULTY_LABELS[d]) diffDesc.textContent = DIFFICULTY_LABELS[d];
   optReverse.checked = state.settings.allowReverse;
   optPreview.checked = state.settings.showWordPreview;
   optSpecials.checked = state.settings.enableSpecials;
@@ -1001,6 +1014,8 @@ function closeSettings() {
 }
 
 function applySettings() {
+  const selDiff = optDiffBtns.find(b => b.classList.contains('selected'));
+  if (selDiff) state.settings.difficulty = Number(selDiff.dataset.val);
   state.settings.allowReverse = optReverse.checked;
   state.settings.showWordPreview = optPreview.checked;
   state.settings.enableSpecials = optSpecials.checked;
@@ -1014,6 +1029,14 @@ function applySettings() {
   updateHUD();
   closeSettings();
 }
+
+optDiffBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    const d = Number(btn.dataset.val);
+    optDiffBtns.forEach(b => b.classList.toggle('selected', b === btn));
+    if (diffDesc && DIFFICULTY_LABELS[d]) diffDesc.textContent = DIFFICULTY_LABELS[d];
+  });
+});
 
 optTempoBtns.forEach(btn => {
   btn.addEventListener('click', () => {
