@@ -38,6 +38,7 @@ const slotCanvases = slotEls.map(el => el.querySelector('canvas'));
 
 const rotateBtn = document.getElementById('rotateBtn');
 const permuteBtn = document.getElementById('permuteBtn');
+const undoBtn = document.getElementById('undoBtn');
 
 const startOverlay = document.getElementById('startOverlay');
 const pauseOverlay = document.getElementById('pauseOverlay');
@@ -79,6 +80,9 @@ const state = {
   clearingSet: null,
   clearingStart: 0,
   clearingProgress: 0,
+
+  validatedWords: [],
+  undoSnapshot: null,
 
   lastTime: 0
 };
@@ -178,6 +182,9 @@ function startGame() {
   state.hoverPreview = null;
   state.clearingSet = null;
   state.selectedSlot = 0;
+  state.validatedWords = [];
+  state.undoSnapshot = null;
+  if (undoBtn) undoBtn.disabled = true;
   state.phase = 'PLAYING';
 
   resetTempo();
@@ -284,14 +291,14 @@ window.addEventListener('pointerdown', (e) => {
   }
 });
 
-function addWordToFeed(entry) {
-  // Précharger la définition en arrière-plan (instantané au survol / tap !)
-  fetchDefinition(entry.word);
-
-  if (wordsBar) {
-    const empty = wordsBar.querySelector('.mword-empty');
-    if (empty) empty.remove();
-
+function renderWordsBar() {
+  if (!wordsBar) return;
+  if (state.validatedWords.length === 0) {
+    wordsBar.innerHTML = '<span class="mword-empty">Mots validés (4+ lettres) — clique ou survole pour la définition…</span>';
+    return;
+  }
+  wordsBar.innerHTML = '';
+  for (const entry of state.validatedWords) {
     const chip = document.createElement('button');
     chip.className = 'mword-chip';
     const mult = entry.cellMult > 1 ? ` ×${entry.cellMult}` : '';
@@ -303,12 +310,71 @@ function addWordToFeed(entry) {
       e.stopPropagation();
       showWordDefinition(entry.word, chip, 5500);
     });
-
-    wordsBar.prepend(chip);
-    while (wordsBar.children.length > 10) {
-      wordsBar.lastElementChild.remove();
-    }
+    wordsBar.appendChild(chip);
   }
+}
+
+function addWordToFeed(entry) {
+  // Précharger la définition en arrière-plan (instantané au survol / tap !)
+  fetchDefinition(entry.word);
+  state.validatedWords.unshift({ word: entry.word, cellMult: entry.cellMult });
+  if (state.validatedWords.length > 10) state.validatedWords.pop();
+  renderWordsBar();
+}
+
+function saveUndoSnapshot() {
+  state.undoSnapshot = {
+    grid: state.grid.map(row => row.map(cell => (cell ? { letter: cell.letter, spawnAnim: 1 } : null))),
+    bonusMap: new Map(state.bonusMap),
+    tray: state.tray.map(p => (p ? { type: p.type, blocks: p.blocks.map(b => ({ ...b })) } : null)),
+    selectedSlot: state.selectedSlot,
+    score: state.score,
+    wordsCount: state.wordsCount,
+    bestWord: state.bestWord,
+    bestWordPts: state.bestWordPts,
+    combo: state.combo,
+    level: state.level,
+    fever: state.fever,
+    feverActive: state.feverActive,
+    feverEndTime: state.feverEndTime,
+    validatedWords: state.validatedWords.map(w => ({ ...w }))
+  };
+  if (undoBtn) undoBtn.disabled = false;
+}
+
+function undoLastMove() {
+  if (!state.undoSnapshot || (state.phase !== 'PLAYING' && state.phase !== 'CLEARING')) return;
+  const snap = state.undoSnapshot;
+  state.undoSnapshot = null;
+
+  state.grid = snap.grid;
+  state.bonusMap = snap.bonusMap;
+  state.tray = snap.tray;
+  state.selectedSlot = snap.selectedSlot;
+  state.score = snap.score;
+  state.wordsCount = snap.wordsCount;
+  state.bestWord = snap.bestWord;
+  state.bestWordPts = snap.bestWordPts;
+  state.combo = snap.combo;
+  state.level = snap.level;
+  state.fever = snap.fever;
+  state.feverActive = snap.feverActive;
+  state.feverEndTime = snap.feverEndTime;
+  state.validatedWords = snap.validatedWords;
+
+  state.clearingSet = null;
+  state.hoverPreview = null;
+  state.phase = 'PLAYING';
+
+  boardFrame.classList.toggle('fever-active', state.feverActive);
+  if (undoBtn) undoBtn.disabled = true;
+
+  resetTempo();
+  renderTray();
+  renderWordsBar();
+  updateHUD();
+  sound.permute();
+  renderer.spawnPopup('↩ COUP ANNULÉ', 3.5, GRID_SIZE / 2, '#ff80ff', 1.1);
 }
 
 // Vérifie si au moins une des 3 pièces peut encore tenir sur la grille (avec ou sans rotation)
@@ -332,6 +398,8 @@ function hasAnyValidMove() {
 function placePieceFromSlot(slotIdx, row, col, isAuto = false) {
   const piece = state.tray[slotIdx];
   if (!piece || !canPlacePiece(state.grid, piece, row, col)) return false;
+
+  saveUndoSnapshot();
 
   for (const b of piece.blocks) {
     state.grid[row + b.y][col + b.x] = {
@@ -545,6 +613,7 @@ function permuteSelected() {
 
 rotateBtn.addEventListener('click', rotateSelected);
 permuteBtn.addEventListener('click', permuteSelected);
+undoBtn?.addEventListener('click', undoLastMove);
 
 // --- Drag & Drop (Souris & Tactile) + Tap-to-place ---
 const drag = {
@@ -716,6 +785,9 @@ window.addEventListener('keydown', (e) => {
   } else if (e.key === 's' || e.key === 'S' || e.key === ' ') {
     e.preventDefault();
     permuteSelected();
+  } else if (e.key === 'z' || e.key === 'Z') {
+    e.preventDefault();
+    undoLastMove();
   } else if (e.key === '1' || e.key === '2' || e.key === '3') {
     state.selectedSlot = Number(e.key) - 1;
     renderTray();

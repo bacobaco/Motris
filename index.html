@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=20" />
+  <link rel="stylesheet" href="style.css?v=21" />
 </head>
 
 <body>
@@ -76,7 +76,8 @@
           <div class="overlay-card">
             <h1 class="hero-title">MOTRIS</h1>
             <p class="hero-sub">Glisse tes jetons sur la grille <strong>8×8</strong> et forme de vrais mots français de
-              <strong>4+ lettres</strong> pour tout faire exploser !</p>
+              <strong>4+ lettres</strong> pour tout faire exploser !
+            </p>
 
             <div class="mode-selector">
               <button class="mode-btn selected" data-mode="arcade">
@@ -136,6 +137,8 @@
             data-tip="Pivote la pièce de 90° (touche R ou clic droit)">↻ Tourner</button>
           <button class="action-pill permute-pill has-tip tip-top" id="permuteBtn"
             data-tip="Inverse l'ordre des lettres (touche S ou Espace)">⇄ Permuter</button>
+          <button class="action-pill undo-pill has-tip tip-top" id="undoBtn"
+            data-tip="Annuler le coup précédent (Z)" disabled>↩</button>
           <div class="fever-inline has-tip tip-top tip-left"
             data-tip="À 100 %, active la Fièvre Fluo ×3 pendant 14 s !">
             <span class="fever-inline-label">🔥</span>
@@ -244,7 +247,8 @@
             <div class="tuto-bonus-item">
               <span class="dt joker">★</span>
               <div><strong>Joker</strong><br />Remplace n'importe quelle lettre (ex. <code>L★NE</code> →
-                <strong>LUNE</strong>).</div>
+                <strong>LUNE</strong>).
+              </div>
             </div>
             <div class="tuto-bonus-item">
               <span class="dt mult">×3</span>
@@ -294,7 +298,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=19"></script>
+  <script type="module" src="js/main.js?v=21"></script>
 </body>
 
 </html>
