@@ -7,7 +7,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=9" />
+  <link rel="stylesheet" href="style.css?v=11" />
 </head>
 <body>
   <div class="bg-orb orb-1"></div>
@@ -23,29 +23,29 @@
       </div>
 
       <div class="hud-pills">
-        <div class="hud-pill">
+        <div class="hud-pill has-tip" data-tip="Ton score de la partie en cours">
           <span class="hud-label">SCORE</span>
           <span class="hud-value" id="scoreVal">0</span>
         </div>
-        <div class="hud-pill">
+        <div class="hud-pill has-tip" data-tip="Ton meilleur score sauvegardé">
           <span class="hud-label">RECORD</span>
           <span class="hud-value accent" id="bestVal">0</span>
         </div>
-        <div class="hud-pill">
+        <div class="hud-pill has-tip" data-tip="Multiplicateur : enchaîne des mots à chaque coup !">
           <span class="hud-label">COMBO</span>
           <span class="hud-value combo-val" id="comboVal">×1</span>
         </div>
       </div>
 
       <div class="header-actions">
-        <button class="icon-btn" id="soundBtn" title="Son" aria-label="Son">🔊</button>
-        <button class="icon-btn" id="pauseBtn" title="Pause" aria-label="Pause">⏸️</button>
-        <button class="icon-btn" id="helpBtn" title="Règles" aria-label="Règles">❓</button>
+        <button class="icon-btn has-tip tip-left" id="soundBtn" data-tip="Activer ou couper le son" aria-label="Son">🔊</button>
+        <button class="icon-btn has-tip tip-left" id="pauseBtn" data-tip="Mettre en pause (P)" aria-label="Pause">⏸️</button>
+        <button class="icon-btn has-tip tip-left" id="helpBtn" data-tip="Ouvrir le tutoriel complet" aria-label="Tutoriel">📖</button>
       </div>
     </header>
 
     <!-- Tempo Bar (Arcade) -->
-    <section class="tempo-wrap" id="tempoBarWrap">
+    <section class="tempo-wrap has-tip" id="tempoBarWrap" data-tip="Pose ton jeton avant la fin du chrono, sinon il se pose tout seul !">
       <span class="tempo-label">⚡ TEMPO</span>
       <div class="tempo-track">
         <div class="tempo-fill" id="tempoFill"></div>
@@ -81,6 +81,7 @@
                 </div>
 
                 <button class="primary-btn" id="playBtn">JOUER</button>
+                <button class="secondary-btn tuto-launch-btn" id="introTutoBtn">📖 TUTORIEL & EXEMPLES</button>
               </div>
             </div>
 
@@ -121,9 +122,9 @@
         <!-- Action Bar + 3-Piece Tray -->
         <section class="dock-area">
           <div class="action-bar">
-            <button class="action-pill rotate-pill" id="rotateBtn">↻ Tourner</button>
-            <button class="action-pill permute-pill" id="permuteBtn">⇄ Permuter</button>
-            <div class="fever-inline">
+            <button class="action-pill rotate-pill has-tip tip-top" id="rotateBtn" data-tip="Pivote la pièce de 90° (touche R ou clic droit)">↻ Tourner</button>
+            <button class="action-pill permute-pill has-tip tip-top" id="permuteBtn" data-tip="Inverse l'ordre des lettres (touche S ou Espace)">⇄ Permuter</button>
+            <div class="fever-inline has-tip tip-top tip-left" data-tip="À 100 %, active la Fièvre Fluo ×3 pendant 14 s !">
               <span class="fever-inline-label">🔥</span>
               <div class="fever-track">
                 <div class="fever-fill" id="feverFill"></div>
@@ -133,13 +134,13 @@
           </div>
 
           <div class="tray-grid">
-            <div class="tray-slot selected" id="slot0">
+            <div class="tray-slot selected has-tip tip-top" id="slot0" data-tip="Glisse sur la grille ou touche pour sélectionner (1)">
               <canvas width="110" height="84"></canvas>
             </div>
-            <div class="tray-slot" id="slot1">
+            <div class="tray-slot has-tip tip-top" id="slot1" data-tip="Glisse sur la grille ou touche pour sélectionner (2)">
               <canvas width="110" height="84"></canvas>
             </div>
-            <div class="tray-slot" id="slot2">
+            <div class="tray-slot has-tip tip-top tip-left" id="slot2" data-tip="Glisse sur la grille ou touche pour sélectionner (3)">
               <canvas width="110" height="84"></canvas>
             </div>
           </div>
@@ -173,25 +174,112 @@
   <!-- Floating Drag Ghost -->
   <canvas id="dragGhost" width="136" height="136"></canvas>
 
-  <!-- Help Modal -->
+  <!-- Interactive Multi-Step Tutorial Modal -->
   <div class="modal-backdrop" id="helpModal">
-    <div class="modal-card">
+    <div class="modal-card tuto-modal">
       <div class="modal-header">
-        <h3>Comment jouer à MOTRIS 8×8</h3>
-        <button class="icon-btn" id="closeHelpBtn">✕</button>
+        <h3>📖 Tutoriel MOTRIS</h3>
+        <button class="icon-btn" id="closeHelpBtn" aria-label="Fermer">✕</button>
       </div>
-      <div class="modal-body">
-        <ul>
-          <li><strong>Glisse & pose</strong> (ou touche une pièce puis une case) tes barres de 2/3 lettres, formes en L ou jetons uniques sur la grille 8×8.</li>
-          <li><strong>↻ Tourner & ⇄ Permuter</strong> : pivote ta pièce ou inverse ses lettres avant de la poser.</li>
-          <li><strong>Mots de 3+ lettres</strong> : forme des mots français horizontalement ou verticalement pour faire exploser les tuiles et enchaîner les <strong>Combos</strong> !</li>
-          <li><strong>Jetons spéciaux</strong> : fais un mot à côté d'une <strong>💣 Bombe</strong> (explosion 3×3) ou d'un <strong>⚡ Éclair</strong> (laser ligne + colonne), et vise les cases <strong>×2 / ×3</strong> !</li>
-          <li><strong>⚡ Tempo</strong> : en mode Arcade, joue avant la fin de la barre, sinon la pièce se pose toute seule.</li>
-        </ul>
+
+      <div class="tuto-slides" id="tutoSlides">
+        <!-- Slide 1 -->
+        <div class="tuto-slide active" data-step="0">
+          <div class="tuto-badge">ÉTAPE 1 / 4 — LES JETONS</div>
+          <h4>Glisse, Tourne & Permute</h4>
+          <p>Tu as toujours <strong>3 pièces</strong> en bas : barres de 2 ou 3 lettres, formes en <strong>L</strong> et jetons uniques.</p>
+          <div class="tuto-demo-box">
+            <div class="demo-row">
+              <div class="demo-piece">
+                <span class="dt c">R</span><span class="dt v">A</span><span class="dt c">T</span>
+              </div>
+              <span class="demo-arrow">⇄</span>
+              <div class="demo-piece">
+                <span class="dt c">T</span><span class="dt c">R</span><span class="dt v">A</span>
+              </div>
+              <span class="demo-arrow">↻</span>
+              <div class="demo-piece col">
+                <span class="dt c">T</span><span class="dt c">R</span><span class="dt v">A</span>
+              </div>
+            </div>
+          </div>
+          <p class="tuto-note">Glisse une pièce directement sur la grille 8×8 (ou touche la pièce puis une case). Utilise <strong>↻ Tourner</strong> et <strong>⇄ Permuter</strong> avant de poser !</p>
+        </div>
+
+        <!-- Slide 2 -->
+        <div class="tuto-slide" data-step="1">
+          <div class="tuto-badge">ÉTAPE 2 / 4 — FORMER DES MOTS</div>
+          <h4>Horizontal ou Vertical (3+ lettres)</h4>
+          <p>Aligne 3 lettres françaises ou plus (sans accents) pour les faire exploser et libérer de la place !</p>
+          <div class="tuto-demo-box">
+            <div class="demo-word-preview">✨ SOLEIL +9 000</div>
+            <div class="demo-piece glow-green">
+              <span class="dt c">S</span><span class="dt v">O</span><span class="dt c">L</span><span class="dt v">E</span><span class="dt v">I</span><span class="dt c">L</span>
+            </div>
+          </div>
+          <p class="tuto-note">Quand tu survoles le plateau, les mots valides s'illuminent en <strong>vert fluo</strong> avec une bulle d'aperçu avant même de lâcher la pièce.</p>
+        </div>
+
+        <!-- Slide 3 -->
+        <div class="tuto-slide" data-step="2">
+          <div class="tuto-badge">ÉTAPE 3 / 4 — BONUS & EXPLOSIONS</div>
+          <h4>Déclenche des réactions en chaîne !</h4>
+          <div class="tuto-bonus-grid">
+            <div class="tuto-bonus-item">
+              <span class="dt bomb">💣</span>
+              <div><strong>Bombe</strong><br />Forme un mot à côté pour tout exploser en <strong>3×3</strong> !</div>
+            </div>
+            <div class="tuto-bonus-item">
+              <span class="dt light">⚡</span>
+              <div><strong>Éclair</strong><br />Forme un mot à côté pour tirer un <strong>laser ligne + colonne</strong> !</div>
+            </div>
+            <div class="tuto-bonus-item">
+              <span class="dt joker">★</span>
+              <div><strong>Joker</strong><br />Remplace n'importe quelle lettre (ex. <code>M★R</code> → <strong>MER</strong>).</div>
+            </div>
+            <div class="tuto-bonus-item">
+              <span class="dt mult">×3</span>
+              <div><strong>Cases ×2 / ×3</strong><br />Multiplient le score du mot qui passe dessus !</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Slide 4 -->
+        <div class="tuto-slide" data-step="3">
+          <div class="tuto-badge">ÉTAPE 4 / 4 — TEMPO, COMBOS & FIÈVRE</div>
+          <h4>Reste dans le rythme !</h4>
+          <div class="tuto-demo-box">
+            <div class="demo-tempo">
+              <span>⚡ TEMPO</span>
+              <div class="demo-bar"><div class="demo-bar-fill"></div></div>
+              <span>12s</span>
+            </div>
+            <div class="demo-badges">
+              <span class="db green">🔥 COMBO ×3</span>
+              <span class="db pink">🌈 FIÈVRE ×3</span>
+            </div>
+          </div>
+          <ul class="tuto-list">
+            <li><strong>Chrono Tempo (Arcade)</strong> : si le temps expire, ta pièce se pose là où tu la places (ou ailleurs si impossible).</li>
+            <li><strong>Combos & Fièvre</strong> : enchaîne des mots pour multiplier tes points jusqu'à <strong>×3 en Fièvre Fluo</strong> !</li>
+            <li><strong>Fin de partie</strong> : dès qu'aucun de tes 3 jetons ne peut plus rentrer sur le plateau, c'est perdu.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="tuto-footer">
+        <button class="secondary-btn tuto-nav-btn" id="tutoPrevBtn">◀ Préc.</button>
+        <div class="tuto-dots" id="tutoDots">
+          <span class="dot active"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+          <span class="dot"></span>
+        </div>
+        <button class="primary-btn tuto-nav-btn" id="tutoNextBtn">Suiv. ▶</button>
       </div>
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=10"></script>
+  <script type="module" src="js/main.js?v=11"></script>
 </body>
 </html>

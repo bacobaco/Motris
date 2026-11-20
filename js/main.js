@@ -621,7 +621,7 @@ gameCanvas.addEventListener('contextmenu', (e) => {
 // Raccourcis Clavier PC
 window.addEventListener('keydown', (e) => {
   if (helpModal.classList.contains('open')) {
-    if (e.key === 'Escape') helpModal.classList.remove('open');
+    if (e.key === 'Escape') closeTutorial();
     return;
   }
   if (e.key === 'p' || e.key === 'P' || e.key === 'Escape') {
@@ -724,14 +724,63 @@ soundBtn.addEventListener('click', () => {
   soundBtn.textContent = muted ? '🔇' : '🔊';
 });
 
-document.getElementById('helpBtn').addEventListener('click', () => helpModal.classList.add('open'));
-document.getElementById('closeHelpBtn').addEventListener('click', () => helpModal.classList.remove('open'));
+// --- Tutoriel interactif (4 étapes) ---
+const tutoSlides = [...document.querySelectorAll('.tuto-slide')];
+const tutoDots = [...document.querySelectorAll('#tutoDots .dot')];
+const tutoPrevBtn = document.getElementById('tutoPrevBtn');
+const tutoNextBtn = document.getElementById('tutoNextBtn');
+let tutoStep = 0;
+let pausedByTuto = false;
+
+function showTutoStep(idx) {
+  tutoStep = Math.max(0, Math.min(tutoSlides.length - 1, idx));
+  tutoSlides.forEach((s, i) => s.classList.toggle('active', i === tutoStep));
+  tutoDots.forEach((d, i) => d.classList.toggle('active', i === tutoStep));
+  tutoPrevBtn.style.visibility = tutoStep === 0 ? 'hidden' : 'visible';
+  tutoNextBtn.textContent = tutoStep === tutoSlides.length - 1 ? 'C’est parti ! 🚀' : 'Suiv. ▶';
+}
+
+function openTutorial() {
+  if (state.phase === 'PLAYING') {
+    state.phase = 'PAUSED';
+    pausedByTuto = true;
+  }
+  showTutoStep(0);
+  helpModal.classList.add('open');
+}
+
+function closeTutorial() {
+  helpModal.classList.remove('open');
+  if (pausedByTuto) {
+    pausedByTuto = false;
+    state.phase = 'PLAYING';
+  }
+}
+
+document.getElementById('helpBtn').addEventListener('click', openTutorial);
+document.getElementById('introTutoBtn').addEventListener('click', openTutorial);
+document.getElementById('closeHelpBtn').addEventListener('click', closeTutorial);
 helpModal.addEventListener('click', (e) => {
-  if (e.target === helpModal) helpModal.classList.remove('open');
+  if (e.target === helpModal) closeTutorial();
 });
 
-window.addEventListener('resize', () => {
-  renderer.resize();
+tutoPrevBtn.addEventListener('click', () => showTutoStep(tutoStep - 1));
+tutoNextBtn.addEventListener('click', () => {
+  if (tutoStep === tutoSlides.length - 1) {
+    closeTutorial();
+  } else {
+    showTutoStep(tutoStep + 1);
+  }
 });
+
+tutoDots.forEach((dot, i) => {
+  dot.addEventListener('click', () => showTutoStep(i));
+});
+
+// Ajustement automatique du Canvas dès que le cadre change de taille
+if (typeof ResizeObserver !== 'undefined') {
+  new ResizeObserver(() => renderer.resize()).observe(boardFrame);
+}
+window.addEventListener('resize', () => renderer.resize());
 
 requestAnimationFrame(loop);
