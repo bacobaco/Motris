@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=11" />
+  <link rel="stylesheet" href="style.css?v=15" />
 </head>
 
 <body>
@@ -67,6 +67,7 @@
         <div class="board-container">
           <div class="board-frame" id="boardFrame">
             <canvas id="gameCanvas"></canvas>
+            <button class="last-word-pill" id="lastWordPill" aria-label="Voir la définition du dernier mot"></button>
 
             <!-- Start Overlay -->
             <div class="overlay active" id="startOverlay">
@@ -188,6 +189,15 @@
   <!-- Floating Drag Ghost -->
   <canvas id="dragGhost" width="136" height="136"></canvas>
 
+  <!-- Floating Definition Tooltip / Popover -->
+  <div class="def-popover" id="defPopover" role="tooltip">
+    <div class="def-pop-head">
+      <strong id="defPopWord">MOT</strong>
+      <span class="def-pop-pos" id="defPopPos">Nom commun</span>
+    </div>
+    <p class="def-pop-text" id="defPopText">Chargement de la définition…</p>
+  </div>
+
   <!-- Interactive Multi-Step Tutorial Modal -->
   <div class="modal-backdrop" id="helpModal">
     <div class="modal-card tuto-modal">
@@ -305,7 +315,7 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=14"></script>
+  <script type="module" src="js/main.js?v=15"></script>
 </body>
 
 </html>

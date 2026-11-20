@@ -7,6 +7,7 @@ import {
 import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=13';
 import { Renderer } from './renderer.js?v=9';
 import { sound } from './audio.js?v=9';
+import { fetchDefinition } from './definitions.js?v=15';
 
 const GRID_SIZE = 8;
 const CLEAR_DURATION = 380;
@@ -185,6 +186,9 @@ function startGame() {
   boardFrame.classList.remove('fever-active');
   modeBadge.textContent = state.mode === 'arcade' ? 'ARCADE' : 'ZEN';
   wordFeed.innerHTML = '<li class="word-empty">Glisse un jeton pour former un mot…</li>';
+  lastValidatedWord = '';
+  lastWordPill?.classList.remove('show');
+  hideWordDefinition();
 
   for (let i = 0; i < 3; i++) refillTraySlot(i);
 
@@ -232,14 +236,101 @@ function updateHUD() {
   }
 }
 
+const defPopover = document.getElementById('defPopover');
+const defPopWord = document.getElementById('defPopWord');
+const defPopPos = document.getElementById('defPopPos');
+const defPopText = document.getElementById('defPopText');
+const lastWordPill = document.getElementById('lastWordPill');
+let lastValidatedWord = '';
+let defHideTimer = null;
+
+function positionDefPopover(anchorEl) {
+  const rect = anchorEl.getBoundingClientRect();
+  const popW = Math.min(270, window.innerWidth - 20);
+  let left = rect.left - popW - 10;
+  let top = rect.top - 6;
+
+  // Si pas assez de place à gauche (ex. sur mobile), placer sous l'élément centré
+  if (left < 10) {
+    left = Math.max(10, Math.min(window.innerWidth - popW - 10, rect.right - popW));
+    top = rect.bottom + 8;
+  }
+  top = Math.max(10, Math.min(window.innerHeight - 130, top));
+
+  defPopover.style.left = `${left}px`;
+  defPopover.style.top = `${top}px`;
+}
+
+async function showWordDefinition(word, anchorEl, autoHideMs = 0) {
+  clearTimeout(defHideTimer);
+  defPopWord.textContent = word;
+  defPopPos.textContent = 'Recherche…';
+  defPopText.textContent = 'Chargement de la définition…';
+  positionDefPopover(anchorEl);
+  defPopover.classList.add('visible');
+
+  const def = await fetchDefinition(word);
+  // Vérifier qu'on affiche toujours ce mot
+  if (defPopWord.textContent.toUpperCase() === word.toUpperCase() || defPopover.classList.contains('visible')) {
+    defPopWord.textContent = def.title || word;
+    defPopPos.textContent = def.pos || 'Français';
+    defPopText.textContent = def.text;
+    positionDefPopover(anchorEl);
+  }
+
+  if (autoHideMs > 0) {
+    defHideTimer = setTimeout(hideWordDefinition, autoHideMs);
+  }
+}
+
+function hideWordDefinition() {
+  clearTimeout(defHideTimer);
+  defPopover.classList.remove('visible');
+}
+
+lastWordPill?.addEventListener('click', (e) => {
+  e.stopPropagation();
+  if (!lastValidatedWord) return;
+  if (defPopover.classList.contains('visible')) {
+    hideWordDefinition();
+  } else {
+    showWordDefinition(lastValidatedWord, lastWordPill, 5500);
+  }
+});
+
+window.addEventListener('pointerdown', (e) => {
+  if (defPopover.classList.contains('visible') && e.target !== lastWordPill && !e.target.closest?.('.has-def')) {
+    hideWordDefinition();
+  }
+});
+
 function addWordToFeed(entry) {
   const empty = wordFeed.querySelector('.word-empty');
   if (empty) empty.remove();
 
+  // Précharger la définition en arrière-plan (instantané au survol !)
+  fetchDefinition(entry.word);
+
   const li = document.createElement('li');
+  li.className = 'has-def';
   const multTag = entry.cellMult > 1 ? `<span class="word-badge-sq">×${entry.cellMult}</span>` : '';
-  li.innerHTML = `<span>${entry.word}${multTag}</span><span class="word-pts">+${entry.points.toLocaleString('fr-FR')}</span>`;
+  li.innerHTML = `<span>${entry.word}${multTag}<span class="word-info-icon">ⓘ</span></span><span class="word-pts">+${entry.points.toLocaleString('fr-FR')}</span>`;
+
+  li.addEventListener('mouseenter', () => showWordDefinition(entry.word, li));
+  li.addEventListener('mouseleave', hideWordDefinition);
+  li.addEventListener('click', (e) => {
+    e.stopPropagation();
+    showWordDefinition(entry.word, li, 5500);
+  });
+
   wordFeed.prepend(li);
+
+  // Mettre à jour la pilule mobile du dernier mot validé
+  lastValidatedWord = entry.word;
+  if (lastWordPill) {
+    lastWordPill.textContent = `✨ ${entry.word} ⓘ`;
+    lastWordPill.classList.add('show');
+  }
 
   while (wordFeed.children.length > 10) {
     wordFeed.lastElementChild.remove();
