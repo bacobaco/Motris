@@ -9,8 +9,8 @@ Object.values(TARGET_WORDS).flat().forEach(w => WORD_SET.add(w));
 
 const resolveCache = new Map();
 
-export function resolveWord(str) {
-  if (str.length < 4 || str.length > 8) return null;
+export function resolveWord(str, minLen = 4) {
+  if (str.length < minLen || str.length > 8) return null;
   if (str.includes('💣') || str.includes('⚡')) return null;
 
   const starIdx = str.indexOf('★');
@@ -25,7 +25,7 @@ export function resolveWord(str) {
     if (str[i] === '★') starCount++;
   }
   if (starCount > 2) {
-    const res = resolveWord(str.replace('★', 'E'));
+    const res = resolveWord(str.replace('★', 'E'), minLen);
     resolveCache.set(str, res);
     return res;
   }
@@ -71,8 +71,11 @@ export function scoreWord(word, rawLetters, cellMult = 1) {
   return total;
 }
 
-// Scanne la grille 8×8 (horizontal et vertical, 4+ lettres, séquence entière valide comme au Scrabble)
-export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
+// Scanne la grille 8×8 (horizontal et vertical, avec options minLen et allowReverse)
+export function findMatches(grid, bonusMap = new Map(), options = {}) {
+  const minLen = typeof options === 'number' ? options : (options.minLen ?? 4);
+  const allowReverse = typeof options === 'object' ? Boolean(options.allowReverse) : false;
+
   const size = grid.length;
   const matchedCells = new Set();
   const foundWords = [];
@@ -93,7 +96,18 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
     return mult;
   };
 
-  // 1. Mots Horizontaux (gauche -> droite) : la séquence contiguë entière doit former un vrai mot (4+ lettres)
+  const resolveSegment = (raw) => {
+    const forward = resolveWord(raw, minLen);
+    if (forward) return { word: forward, rawUsed: raw };
+    if (allowReverse) {
+      const rev = raw.split('').reverse().join('');
+      const backward = resolveWord(rev, minLen);
+      if (backward) return { word: backward, rawUsed: rev };
+    }
+    return null;
+  };
+
+  // 1. Mots Horizontaux (gauche -> droite, et droite -> gauche si allowReverse)
   for (let r = 0; r < size; r++) {
     let c = 0;
     while (c < size) {
@@ -105,8 +119,8 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
       if (segLen >= minLen && segLen <= 8) {
         let raw = '';
         for (let k = c; k < end; k++) raw += grid[r][k].letter;
-        const resolved = resolveWord(raw);
-        if (resolved) {
+        const match = resolveSegment(raw);
+        if (match) {
           const cells = [];
           for (let k = c; k < end; k++) {
             cells.push([r, k]);
@@ -114,9 +128,9 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
           }
           const cellMult = computeCellMult(cells);
           foundWords.push({
-            word: resolved,
+            word: match.word,
             cells,
-            points: scoreWord(resolved, raw, cellMult),
+            points: scoreWord(match.word, match.rawUsed, cellMult),
             cellMult
           });
         }
@@ -125,7 +139,7 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
     }
   }
 
-  // 2. Mots Verticaux (haut -> bas) : la séquence contiguë entière doit former un vrai mot (4+ lettres)
+  // 2. Mots Verticaux (haut -> bas, et bas -> haut si allowReverse)
   for (let c = 0; c < size; c++) {
     let r = 0;
     while (r < size) {
@@ -137,8 +151,8 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
       if (segLen >= minLen && segLen <= 8) {
         let raw = '';
         for (let k = r; k < end; k++) raw += grid[k][c].letter;
-        const resolved = resolveWord(raw);
-        if (resolved) {
+        const match = resolveSegment(raw);
+        if (match) {
           const cells = [];
           for (let k = r; k < end; k++) {
             cells.push([k, c]);
@@ -146,9 +160,9 @@ export function findMatches(grid, bonusMap = new Map(), minLen = 4) {
           }
           const cellMult = computeCellMult(cells);
           foundWords.push({
-            word: resolved,
+            word: match.word,
             cells,
-            points: scoreWord(resolved, raw, cellMult),
+            points: scoreWord(match.word, match.rawUsed, cellMult),
             cellMult
           });
         }
@@ -226,7 +240,7 @@ export function canPlacePiece(grid, piece, row, col) {
   return true;
 }
 
-export function previewPlacement(grid, bonusMap, piece, row, col) {
+export function previewPlacement(grid, bonusMap, piece, row, col, options = {}) {
   if (!canPlacePiece(grid, piece, row, col)) {
     return { valid: false, matchedCells: new Set(), foundWords: [] };
   }
@@ -234,6 +248,6 @@ export function previewPlacement(grid, bonusMap, piece, row, col) {
   for (const b of piece.blocks) {
     sim[row + b.y][col + b.x] = { letter: b.letter };
   }
-  const res = findMatches(sim, bonusMap, 4);
+  const res = findMatches(sim, bonusMap, options);
   return { valid: true, ...res };
 }

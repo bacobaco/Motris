@@ -1,11 +1,11 @@
 import { getLetterCategory, LETTER_POINTS } from './pieces.js?v=9';
 
 const PALETTES = {
-  vowel:     { top: '#ffea00', bot: '#ff9100', border: '#ffff8d', text: '#111827', glow: '#ffea00' },
+  vowel: { top: '#ffea00', bot: '#ff9100', border: '#ffff8d', text: '#111827', glow: '#ffea00' },
   consonant: { top: '#00f5ff', bot: '#0077ff', border: '#b3ffff', text: '#04101f', glow: '#00f5ff' },
-  rare:      { top: '#ff2aff', bot: '#9d00ff', border: '#ffb3ff', text: '#ffffff', glow: '#ff2aff' },
-  joker:     { top: '#00ff88', bot: '#00b85c', border: '#b3ffda', text: '#022c1b', glow: '#00ff88' },
-  bomb:      { top: '#ff2a55', bot: '#b71c1c', border: '#ff9eb5', text: '#ffffff', glow: '#ff2a55' },
+  rare: { top: '#ff2aff', bot: '#9d00ff', border: '#ffb3ff', text: '#ffffff', glow: '#ff2aff' },
+  joker: { top: '#00ff88', bot: '#00b85c', border: '#b3ffda', text: '#022c1b', glow: '#00ff88' },
+  bomb: { top: '#ff2a55', bot: '#b71c1c', border: '#ff9eb5', text: '#ffffff', glow: '#ff2a55' },
   lightning: { top: '#7df9ff', bot: '#6366f1', border: '#ffffff', text: '#ffffff', glow: '#00f5ff' }
 };
 
@@ -293,7 +293,8 @@ export class Renderer {
     }
 
     const { grid, hoverPreview, clearingSet, clearingProgress, feverActive } = state;
-    const hoverMatches = hoverPreview?.valid ? hoverPreview.matchedCells : null;
+    const allowPreview = state.settings ? state.settings.showWordPreview : true;
+    const hoverMatches = (allowPreview && hoverPreview?.valid) ? hoverPreview.matchedCells : null;
 
     // Tuiles posées sur le plateau
     for (let r = 0; r < this.size; r++) {
@@ -339,8 +340,8 @@ export class Renderer {
         }
       }
 
-      // Bulle flottante du mot qui va se former !
-      if (valid && foundWords && foundWords.length > 0) {
+      // Bulle flottante du mot qui va se former (si aperçu activé)
+      if (allowPreview && valid && foundWords && foundWords.length > 0) {
         const previewLabel = foundWords.map(w => w.word).join(' + ');
         const px = Math.min(Math.max((col + 0.8) * cs, 72), this.width - 72);
         const py = Math.max(row * cs - 16, 20);

@@ -4,8 +4,8 @@ import {
   permutePieceLetters,
   getPieceDimensions
 } from './pieces.js?v=9';
-import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=19';
-import { Renderer } from './renderer.js?v=9';
+import { findMatches, canPlacePiece, previewPlacement } from './words.js?v=24';
+import { Renderer } from './renderer.js?v=24';
 import { sound } from './audio.js?v=9';
 import { fetchDefinition } from './definitions.js?v=16';
 
@@ -52,9 +52,34 @@ const finalBestWord = document.getElementById('finalBestWord');
 const renderer = new Renderer(gameCanvas, GRID_SIZE);
 const gen = new PieceGenerator();
 
+const DEFAULT_SETTINGS = {
+  allowReverse: false,
+  tempoSec: 60,
+  minLen: 4,
+  showWordPreview: true,
+  enableSpecials: true
+};
+
+function loadSettings() {
+  try {
+    const raw = localStorage.getItem('motris_settings');
+    if (raw) return { ...DEFAULT_SETTINGS, ...JSON.parse(raw) };
+  } catch {}
+  return { ...DEFAULT_SETTINGS };
+}
+
+function saveSettings(s) {
+  try {
+    localStorage.setItem('motris_settings', JSON.stringify(s));
+  } catch {}
+}
+
+const initialSettings = loadSettings();
+
 const state = {
   mode: 'arcade', // 'arcade' | 'zen'
   phase: 'MENU',  // 'MENU' | 'PLAYING' | 'CLEARING' | 'PAUSED' | 'GAMEOVER'
+  settings: initialSettings,
   grid: createEmptyGrid(),
   bonusMap: new Map(), // "r,c" -> 2 | 3
 
@@ -69,8 +94,8 @@ const state = {
   combo: 0,
   level: 1,
 
-  tempoMax: 60000,
-  tempoRemaining: 60000,
+  tempoMax: initialSettings.tempoSec * 1000,
+  tempoRemaining: initialSettings.tempoSec * 1000,
 
   fever: 0,
   feverActive: false,
@@ -140,9 +165,18 @@ function seedStartingBoard() {
     state.grid[r][c] = { letter: gen.randomStartingLetter(), spawnAnim: 0 };
   }
 
-  // 1 Bombe 💣 et 1 Éclair ⚡ déjà placés sur le plateau !
-  spawnSpecialToken('💣');
-  spawnSpecialToken('⚡');
+  // 1 Bombe 💣 et 1 Éclair ⚡ déjà placés sur le plateau (si activés)
+  if (state.settings.enableSpecials) {
+    spawnSpecialToken('💣');
+    spawnSpecialToken('⚡');
+  }
+}
+
+function getWordOptions() {
+  return {
+    minLen: state.settings.minLen,
+    allowReverse: state.settings.allowReverse
+  };
 }
 
 function refillTraySlot(idx) {
@@ -160,7 +194,9 @@ function renderTray() {
 }
 
 function getTempoDuration() {
-  return Math.max(30000, 60000 - (state.level - 1) * 3000);
+  const baseMs = state.settings.tempoSec * 1000;
+  const minMs = Math.max(8000, Math.round(baseMs * 0.5));
+  return Math.max(minMs, baseMs - (state.level - 1) * Math.round(baseMs * 0.05));
 }
 
 function resetTempo() {
@@ -428,7 +464,7 @@ function placePieceFromSlot(slotIdx, row, col, isAuto = false) {
     triggeredBombs,
     triggeredLightnings,
     usedBonuses
-  } = findMatches(state.grid, state.bonusMap, 4);
+  } = findMatches(state.grid, state.bonusMap, getWordOptions());
 
   if (matchedCells.size > 0) {
     state.combo++;
@@ -534,8 +570,8 @@ function finishClearing() {
   state.clearingSet = null;
   state.phase = 'PLAYING';
 
-  // Tous les 3 mots validés, un nouveau jeton spécial (💣 ou ⚡) apparaît seulement s'il reste assez de place
-  if (state.wordsCount > 0 && state.wordsCount % 3 === 0 && getEmptyCells().length >= 12) {
+  // Tous les 3 mots validés, un nouveau jeton spécial (💣 ou ⚡) apparaît si activé et s'il reste assez de place
+  if (state.settings.enableSpecials && state.wordsCount > 0 && state.wordsCount % 3 === 0 && getEmptyCells().length >= 12) {
     spawnSpecialToken();
   }
 
@@ -686,7 +722,7 @@ window.addEventListener('pointermove', (e) => {
     updateDragGhostPosition(e.clientX, e.clientY, drag.isTouch);
     const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, drag.isTouch);
     if (pos) {
-      const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+      const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col, getWordOptions());
       state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
     } else {
       state.hoverPreview = null;
@@ -736,7 +772,7 @@ gameCanvas.addEventListener('pointerdown', (e) => {
 
   const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, isTouch);
   if (pos) {
-    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col, getWordOptions());
     state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
   } else {
     state.hoverPreview = null;
@@ -750,7 +786,7 @@ gameCanvas.addEventListener('pointermove', (e) => {
   if (!piece) return;
   const pos = getGridCoordsFromClient(e.clientX, e.clientY, piece, false);
   if (pos) {
-    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col);
+    const preview = previewPlacement(state.grid, state.bonusMap, piece, pos.row, pos.col, getWordOptions());
     state.hoverPreview = { piece, row: pos.row, col: pos.col, ...preview };
   } else {
     state.hoverPreview = null;
@@ -928,6 +964,79 @@ tutoNextBtn.addEventListener('click', () => {
 tutoDots.forEach((dot, i) => {
   dot.addEventListener('click', () => showTutoStep(i));
 });
+
+// --- Paramètres (⚙️) avec sauvegarde localStorage ---
+const settingsModal = document.getElementById('settingsModal');
+const optReverse = document.getElementById('optReverse');
+const optPreview = document.getElementById('optPreview');
+const optSpecials = document.getElementById('optSpecials');
+const optTempoBtns = [...document.querySelectorAll('#optTempoGroup .seg-btn')];
+const optMinLenBtns = [...document.querySelectorAll('#optMinLenGroup .seg-btn')];
+let pausedBySettings = false;
+
+function syncSettingsUI() {
+  optReverse.checked = state.settings.allowReverse;
+  optPreview.checked = state.settings.showWordPreview;
+  optSpecials.checked = state.settings.enableSpecials;
+  optTempoBtns.forEach(b => b.classList.toggle('selected', Number(b.dataset.val) === state.settings.tempoSec));
+  optMinLenBtns.forEach(b => b.classList.toggle('selected', Number(b.dataset.val) === state.settings.minLen));
+  tempoText.textContent = `${state.settings.tempoSec}s`;
+}
+
+function openSettings() {
+  if (state.phase === 'PLAYING') {
+    state.phase = 'PAUSED';
+    pausedBySettings = true;
+  }
+  syncSettingsUI();
+  settingsModal.classList.add('open');
+}
+
+function closeSettings() {
+  settingsModal.classList.remove('open');
+  if (pausedBySettings) {
+    pausedBySettings = false;
+    state.phase = 'PLAYING';
+  }
+}
+
+function applySettings() {
+  state.settings.allowReverse = optReverse.checked;
+  state.settings.showWordPreview = optPreview.checked;
+  state.settings.enableSpecials = optSpecials.checked;
+  const selTempo = optTempoBtns.find(b => b.classList.contains('selected'));
+  const selMinLen = optMinLenBtns.find(b => b.classList.contains('selected'));
+  if (selTempo) state.settings.tempoSec = Number(selTempo.dataset.val);
+  if (selMinLen) state.settings.minLen = Number(selMinLen.dataset.val);
+
+  saveSettings(state.settings);
+  resetTempo();
+  updateHUD();
+  closeSettings();
+}
+
+optTempoBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    optTempoBtns.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+optMinLenBtns.forEach(btn => {
+  btn.addEventListener('click', () => {
+    optMinLenBtns.forEach(b => b.classList.remove('selected'));
+    btn.classList.add('selected');
+  });
+});
+
+document.getElementById('settingsBtn').addEventListener('click', openSettings);
+document.getElementById('closeSettingsBtn').addEventListener('click', closeSettings);
+document.getElementById('saveSettingsBtn').addEventListener('click', applySettings);
+settingsModal.addEventListener('click', (e) => {
+  if (e.target === settingsModal) closeSettings();
+});
+
+syncSettingsUI();
 
 // Ajustement automatique du Canvas dès que le cadre change de taille
 if (typeof ResizeObserver !== 'undefined') {

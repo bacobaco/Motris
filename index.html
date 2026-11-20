@@ -9,7 +9,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;600;700;800;900&display=swap" rel="stylesheet" />
-  <link rel="stylesheet" href="style.css?v=21" />
+  <link rel="stylesheet" href="style.css?v=24" />
 </head>
 
 <body>
@@ -45,6 +45,8 @@
           aria-label="Son">🔊</button>
         <button class="icon-btn has-tip tip-left" id="pauseBtn" data-tip="Mettre en pause (P)"
           aria-label="Pause">⏸️</button>
+        <button class="icon-btn has-tip tip-left" id="settingsBtn" data-tip="Paramètres du jeu"
+          aria-label="Paramètres">⚙️</button>
         <button class="icon-btn has-tip tip-left" id="helpBtn" data-tip="Ouvrir le tutoriel complet"
           aria-label="Tutoriel">📖</button>
       </div>
@@ -298,7 +300,80 @@
     </div>
   </div>
 
-  <script type="module" src="js/main.js?v=23"></script>
+  <!-- Settings Modal -->
+  <div class="modal-backdrop" id="settingsModal">
+    <div class="modal-card settings-modal">
+      <div class="modal-header">
+        <h3>⚙️ Paramètres</h3>
+        <button class="icon-btn" id="closeSettingsBtn" aria-label="Fermer">✕</button>
+      </div>
+
+      <div class="settings-list">
+        <div class="setting-row">
+          <div class="setting-info">
+            <strong>Lecture inversée</strong>
+            <span>Valide aussi les mots lus de droite à gauche et de bas en haut</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optReverse" />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row col-row">
+          <div class="setting-info">
+            <strong>Temps par coup (Mode Arcade)</strong>
+            <span>Durée de départ de la barre Tempo</span>
+          </div>
+          <div class="seg-group" id="optTempoGroup">
+            <button class="seg-btn" data-val="15">15s</button>
+            <button class="seg-btn" data-val="30">30s</button>
+            <button class="seg-btn selected" data-val="60">60s</button>
+            <button class="seg-btn" data-val="90">90s</button>
+            <button class="seg-btn" data-val="120">2m</button>
+          </div>
+        </div>
+
+        <div class="setting-row col-row">
+          <div class="setting-info">
+            <strong>Longueur minimale des mots</strong>
+            <span>Nombre minimum de lettres pour valider un mot</span>
+          </div>
+          <div class="seg-group" id="optMinLenGroup">
+            <button class="seg-btn" data-val="3">3 lettres</button>
+            <button class="seg-btn selected" data-val="4">4 lettres</button>
+            <button class="seg-btn" data-val="5">5 lettres</button>
+          </div>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <strong>Aperçu vert en direct</strong>
+            <span>Surligne en vert les mots avant de lâcher la pièce</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optPreview" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+
+        <div class="setting-row">
+          <div class="setting-info">
+            <strong>Jetons spéciaux (💣 & ⚡)</strong>
+            <span>Ajoute des Bombes 3×3 et des Éclairs laser sur la grille</span>
+          </div>
+          <label class="toggle-switch">
+            <input type="checkbox" id="optSpecials" checked />
+            <span class="toggle-slider"></span>
+          </label>
+        </div>
+      </div>
+
+      <button class="primary-btn settings-done-btn" id="saveSettingsBtn">APPLIQUER</button>
+    </div>
+  </div>
+
+  <script type="module" src="js/main.js?v=24"></script>
 </body>
 
 </html>
