@@ -285,7 +285,8 @@ body {
 .board-frame {
   position: relative;
   width: var(--board-size);
-  height: var(--board-size);
+  height: auto;
+  aspect-ratio: 1 / 1;
   flex-shrink: 0;
   border-radius: 20px;
   padding: 5px;
@@ -822,6 +823,7 @@ kbd {
     opacity: 1;
     transform: translateX(-50%) translateY(0);
   }
+
   .has-tip.tip-left:hover::after {
     transform: translateY(0);
   }
@@ -931,12 +933,42 @@ kbd {
   flex-shrink: 0;
 }
 
-.dt.v { background: linear-gradient(180deg, #ffea00, #ff9100); color: #111827; border: 1.5px solid #ffff8d; }
-.dt.c { background: linear-gradient(180deg, #00f5ff, #0077ff); color: #04101f; border: 1.5px solid #b3ffff; }
-.dt.bomb { background: linear-gradient(180deg, #ff2a55, #b71c1c); color: #fff; border: 1.5px solid #ff9eb5; }
-.dt.light { background: linear-gradient(180deg, #7df9ff, #6366f1); color: #fff; border: 1.5px solid #fff; }
-.dt.joker { background: linear-gradient(180deg, #00ff88, #00b85c); color: #022c1b; border: 1.5px solid #b3ffda; }
-.dt.mult { background: rgba(255, 42, 255, 0.22); color: #ff80ff; border: 1.5px solid #ff2aff; font-size: 0.85rem; }
+.dt.v {
+  background: linear-gradient(180deg, #ffea00, #ff9100);
+  color: #111827;
+  border: 1.5px solid #ffff8d;
+}
+
+.dt.c {
+  background: linear-gradient(180deg, #00f5ff, #0077ff);
+  color: #04101f;
+  border: 1.5px solid #b3ffff;
+}
+
+.dt.bomb {
+  background: linear-gradient(180deg, #ff2a55, #b71c1c);
+  color: #fff;
+  border: 1.5px solid #ff9eb5;
+}
+
+.dt.light {
+  background: linear-gradient(180deg, #7df9ff, #6366f1);
+  color: #fff;
+  border: 1.5px solid #fff;
+}
+
+.dt.joker {
+  background: linear-gradient(180deg, #00ff88, #00b85c);
+  color: #022c1b;
+  border: 1.5px solid #b3ffda;
+}
+
+.dt.mult {
+  background: rgba(255, 42, 255, 0.22);
+  color: #ff80ff;
+  border: 1.5px solid #ff2aff;
+  font-size: 0.85rem;
+}
 
 .demo-word-preview {
   font-size: 0.82rem;
@@ -967,7 +999,9 @@ kbd {
   color: #cbd5e1;
 }
 
-.tuto-bonus-item strong { color: var(--text-main); }
+.tuto-bonus-item strong {
+  color: var(--text-main);
+}
 
 .demo-tempo {
   width: 100%;
@@ -1005,8 +1039,17 @@ kbd {
   border-radius: 999px;
 }
 
-.db.green { background: rgba(0, 255, 136, 0.18); color: #00ff88; border: 1px solid #00ff88; }
-.db.pink { background: rgba(255, 42, 255, 0.18); color: #ff80ff; border: 1px solid #ff2aff; }
+.db.green {
+  background: rgba(0, 255, 136, 0.18);
+  color: #00ff88;
+  border: 1px solid #00ff88;
+}
+
+.db.pink {
+  background: rgba(255, 42, 255, 0.18);
+  color: #ff80ff;
+  border: 1px solid #ff2aff;
+}
 
 .tuto-list {
   padding-left: 18px;
